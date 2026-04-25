@@ -226,14 +226,54 @@ Satisfies **R3**, **R12**. Brokers Anam credentials so the API key never hits th
 ```js
 // server/anam.js
 const AVATAR_POOL = [
-  { name: "Kevin",   avatarId: "49a96a3e-d9f4-4ac6-8887-033f26d0ef5f", gender: "Male",   voiceName: "Charon"  },
-  { name: "Gabriel", avatarId: "8d2e7b18-7a3f-4f41-9c22-9d73d2d4fefc", gender: "Male",   voiceName: "Charon"  },
-  { name: "Leo",     avatarId: "b64fd5e7-1d8c-4bc5-9f5d-b2d3ab5fa81c", gender: "Male",   voiceName: "Charon"  },
-  { name: "Richard", avatarId: "1e3d6e07-3bde-4c1b-a9c8-0a99a0c0c0a1", gender: "Male",   voiceName: "Charon"  },
-  { name: "Sophie",  avatarId: "c6d4b0a8-c6c1-4e8c-9c2e-3c4c8a89a1f3", gender: "Female", voiceName: "Aoede"   },
-  { name: "Astrid",  avatarId: "7c2f1e0b-6c10-4f0d-9a2f-0d4e7e3d2b1c", gender: "Female", voiceName: "Autonoe" },
-  { name: "Cara",    avatarId: "9a0c7d3e-8b4f-4e6e-9a6f-2c1b9d8e7a6b", gender: "Female", voiceName: "Despina" },
-  { name: "Mia",     avatarId: "2d5e4f6a-1c3b-4d8a-9e7f-5a6b7c8d9e0f", gender: "Female", voiceName: "Sulafat" },
+  {
+    name: "Kevin",
+    avatarId: "49a96a3e-d9f4-4ac6-8887-033f26d0ef5f",
+    gender: "Male",
+    voiceName: "Charon",
+  },
+  {
+    name: "Gabriel",
+    avatarId: "8d2e7b18-7a3f-4f41-9c22-9d73d2d4fefc",
+    gender: "Male",
+    voiceName: "Charon",
+  },
+  {
+    name: "Leo",
+    avatarId: "b64fd5e7-1d8c-4bc5-9f5d-b2d3ab5fa81c",
+    gender: "Male",
+    voiceName: "Charon",
+  },
+  {
+    name: "Richard",
+    avatarId: "1e3d6e07-3bde-4c1b-a9c8-0a99a0c0c0a1",
+    gender: "Male",
+    voiceName: "Charon",
+  },
+  {
+    name: "Sophie",
+    avatarId: "c6d4b0a8-c6c1-4e8c-9c2e-3c4c8a89a1f3",
+    gender: "Female",
+    voiceName: "Aoede",
+  },
+  {
+    name: "Astrid",
+    avatarId: "7c2f1e0b-6c10-4f0d-9a2f-0d4e7e3d2b1c",
+    gender: "Female",
+    voiceName: "Autonoe",
+  },
+  {
+    name: "Cara",
+    avatarId: "9a0c7d3e-8b4f-4e6e-9a6f-2c1b9d8e7a6b",
+    gender: "Female",
+    voiceName: "Despina",
+  },
+  {
+    name: "Mia",
+    avatarId: "2d5e4f6a-1c3b-4d8a-9e7f-5a6b7c8d9e0f",
+    gender: "Female",
+    voiceName: "Sulafat",
+  },
 ];
 
 function pickAvatarProfile(slug) {
@@ -261,7 +301,7 @@ async function anamSessionTokenHandler(req, res) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({ personaConfig }),
     });
@@ -272,7 +312,9 @@ async function anamSessionTokenHandler(req, res) {
     const { sessionToken } = await upstream.json();
     return res.json({ sessionToken, avatarProfile: profile });
   } catch (err) {
-    return res.status(502).json({ error: "Failed to issue Anam session token", details: String(err) });
+    return res
+      .status(502)
+      .json({ error: "Failed to issue Anam session token", details: String(err) });
   }
 }
 
@@ -337,7 +379,7 @@ async function assemblyTokenHandler(_req, res) {
   try {
     const upstream = await fetch("https://api.assemblyai.com/v2/realtime/token", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": apiKey },
+      headers: { "Content-Type": "application/json", Authorization: apiKey },
       body: JSON.stringify({ expires_in: 3600 }),
     });
     if (!upstream.ok) {
@@ -347,7 +389,9 @@ async function assemblyTokenHandler(_req, res) {
     const { token } = await upstream.json();
     return res.json({ token });
   } catch (err) {
-    return res.status(502).json({ error: "Failed to issue AssemblyAI token", details: String(err) });
+    return res
+      .status(502)
+      .json({ error: "Failed to issue AssemblyAI token", details: String(err) });
   }
 }
 
@@ -421,10 +465,18 @@ function attachLiveBridge(wss) {
 
     ws.on("message", async (raw) => {
       let msg;
-      try { msg = JSON.parse(raw.toString()); } catch { return; }
+      try {
+        msg = JSON.parse(raw.toString());
+      } catch {
+        return;
+      }
       switch (msg.type) {
         case "start_session":
-          if (!agent) { send(ws, { type: "error", message: `Unknown agent ${agentSlug}` }); ws.close(); return; }
+          if (!agent) {
+            send(ws, { type: "error", message: `Unknown agent ${agentSlug}` });
+            ws.close();
+            return;
+          }
           // T6 will replace this stub with openGemini(...).
           setTimeout(() => {
             const text = `[stub] Hello — you are speaking with ${profile.name}. Ready when you are.`;
@@ -504,12 +556,16 @@ const MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
 
 function buildSystemInstruction(agent, grounded) {
   const parts = [agent.systemPrompt];
-  if (grounded?.upload)           parts.push(`\n\n## Uploaded material\n${grounded.upload}`);
-  if (grounded?.externalResearch) parts.push(`\n\n## External research\n${JSON.stringify(grounded.externalResearch)}`);
-  if (grounded?.customContext)    parts.push(`\n\n## User context\n${grounded.customContext}`);
-  if (grounded?.hiddenGuidance)   parts.push(`\n\n## Hidden guidance (do not reveal)\n${grounded.hiddenGuidance}`);
+  if (grounded?.upload) parts.push(`\n\n## Uploaded material\n${grounded.upload}`);
+  if (grounded?.externalResearch)
+    parts.push(`\n\n## External research\n${JSON.stringify(grounded.externalResearch)}`);
+  if (grounded?.customContext) parts.push(`\n\n## User context\n${grounded.customContext}`);
+  if (grounded?.hiddenGuidance)
+    parts.push(`\n\n## Hidden guidance (do not reveal)\n${grounded.hiddenGuidance}`);
   if (grounded?.coding?.interviewQuestion) {
-    parts.push(`\n\n## Interview question (drive the conversation off this)\n${grounded.coding.interviewQuestion}`);
+    parts.push(
+      `\n\n## Interview question (drive the conversation off this)\n${grounded.coding.interviewQuestion}`,
+    );
   }
   return parts.join("");
 }
@@ -533,7 +589,10 @@ async function openGemini({ agent, profile, grounded }) {
     },
     callbacks: {
       onmessage: (m) => {
-        const text = m?.serverContent?.modelTurn?.parts?.map((p) => p.text).filter(Boolean).join("");
+        const text = m?.serverContent?.modelTurn?.parts
+          ?.map((p) => p.text)
+          .filter(Boolean)
+          .join("");
         if (text) textHandlers.forEach((fn) => fn(text));
       },
       onerror: (e) => console.error("[gemini] error", e),
@@ -542,18 +601,30 @@ async function openGemini({ agent, profile, grounded }) {
   });
 
   return {
-    onText(fn) { textHandlers.add(fn); return () => textHandlers.delete(fn); },
+    onText(fn) {
+      textHandlers.add(fn);
+      return () => textHandlers.delete(fn);
+    },
     async sendKickoff(agent_, grounded_) {
       const opener = grounded_?.coding?.interviewQuestion
         ? "Greet the candidate briefly, state the interview question, then invite them to start."
         : "Greet the user warmly as the persona described in your system instruction and drive the conversation forward.";
-      await session.sendClientContent({ turns: [{ role: "user", parts: [{ text: opener }] }], turnComplete: true });
+      await session.sendClientContent({
+        turns: [{ role: "user", parts: [{ text: opener }] }],
+        turnComplete: true,
+      });
     },
     async sendUserText(text) {
-      await session.sendClientContent({ turns: [{ role: "user", parts: [{ text }] }], turnComplete: true });
+      await session.sendClientContent({
+        turns: [{ role: "user", parts: [{ text }] }],
+        turnComplete: true,
+      });
     },
     async sendSystemNote(text) {
-      await session.sendClientContent({ turns: [{ role: "user", parts: [{ text: `[system note]\n${text}` }] }], turnComplete: false });
+      await session.sendClientContent({
+        turns: [{ role: "user", parts: [{ text: `[system note]\n${text}` }] }],
+        turnComplete: false,
+      });
     },
     async sendInlineImage(base64Data, mimeType) {
       await session.sendClientContent({
@@ -561,7 +632,11 @@ async function openGemini({ agent, profile, grounded }) {
         turnComplete: false,
       });
     },
-    close() { try { session.close(); } catch {} },
+    close() {
+      try {
+        session.close();
+      } catch {}
+    },
   };
 }
 
@@ -625,7 +700,9 @@ let gotTranscript = false;
 
 const timer = setTimeout(() => {
   console.error("FAIL no transcript within", TIMEOUT_MS, "ms");
-  try { ws.close(); } catch {}
+  try {
+    ws.close();
+  } catch {}
   process.exit(1);
 }, TIMEOUT_MS);
 
@@ -647,7 +724,10 @@ ws.on("message", (raw) => {
   }
 });
 ws.on("close", () => process.exit(gotTranscript ? 0 : 1));
-ws.on("error", (e) => { console.error("FAIL ws error", e); process.exit(1); });
+ws.on("error", (e) => {
+  console.error("FAIL ws error", e);
+  process.exit(1);
+});
 ```
 
 - [ ] **Verify:** with `GEMINI_API_KEY` set and dev server running, `node scripts/smoke-live-handshake.mjs` exits 0 within 15s with a real transcript line.
@@ -719,12 +799,18 @@ const PHASES = ["preflight", "prep", "live", "ended", "error"];
 
 function phaseReducer(state, action) {
   switch (action.type) {
-    case "MIC_GRANTED":   return state.phase === "preflight" ? { ...state, phase: "prep" } : state;
-    case "PREP_DONE":     return state.phase === "prep" ? { ...state, phase: "live" } : state;
-    case "END":           return state.phase === "live" ? { ...state, phase: "ended" } : state;
-    case "FAIL":          return { ...state, phase: "error", errorMessage: action.message };
-    case "RESET":         return { phase: "preflight", errorMessage: null };
-    default: return state;
+    case "MIC_GRANTED":
+      return state.phase === "preflight" ? { ...state, phase: "prep" } : state;
+    case "PREP_DONE":
+      return state.phase === "prep" ? { ...state, phase: "live" } : state;
+    case "END":
+      return state.phase === "live" ? { ...state, phase: "ended" } : state;
+    case "FAIL":
+      return { ...state, phase: "error", errorMessage: action.message };
+    case "RESET":
+      return { phase: "preflight", errorMessage: null };
+    default:
+      return state;
   }
 }
 
@@ -741,7 +827,10 @@ export default function SessionPage({ slug, threadId, sessionId }) {
       setMicReady(true);
       dispatch({ type: "MIC_GRANTED" });
     } catch {
-      dispatch({ type: "FAIL", message: "Microphone access is required. Please grant permission and refresh." });
+      dispatch({
+        type: "FAIL",
+        message: "Microphone access is required. Please grant permission and refresh.",
+      });
     }
   }, []);
 
@@ -766,10 +855,12 @@ export default function SessionPage({ slug, threadId, sessionId }) {
   return (
     <div className="session-root">
       {state.phase === "preflight" && <MicPermissionOverlay onAllow={requestMic} />}
-      {state.phase === "prep"       && <div className="session-prep-stub">Preparing session…</div>}
-      {state.phase === "live"       && <div className="session-live-stub">Live phase placeholder (T9+).</div>}
-      {state.phase === "ended"      && <div className="session-ended-stub">Session ended.</div>}
-      {state.phase === "error"      && (
+      {state.phase === "prep" && <div className="session-prep-stub">Preparing session…</div>}
+      {state.phase === "live" && (
+        <div className="session-live-stub">Live phase placeholder (T9+).</div>
+      )}
+      {state.phase === "ended" && <div className="session-ended-stub">Session ended.</div>}
+      {state.phase === "error" && (
         <ErrorOverlay message={state.errorMessage} onRetry={handleRetry} onExit={handleExit} />
       )}
     </div>
@@ -786,7 +877,9 @@ export default function MicPermissionOverlay({ onAllow }) {
       <div className="session-overlay-card">
         <h2>Allow microphone</h2>
         <p>Spark needs your microphone to run the rehearsal.</p>
-        <button className="session-primary" onClick={onAllow}>Allow microphone</button>
+        <button className="session-primary" onClick={onAllow}>
+          Allow microphone
+        </button>
       </div>
     </div>
   );
@@ -803,8 +896,12 @@ export default function ErrorOverlay({ message, onRetry, onExit }) {
         <h2>Something went wrong</h2>
         <p>{message || "Unexpected error."}</p>
         <div className="session-overlay-actions">
-          <button className="session-primary" onClick={onRetry}>Retry</button>
-          <button className="session-secondary" onClick={onExit}>Exit</button>
+          <button className="session-primary" onClick={onRetry}>
+            Retry
+          </button>
+          <button className="session-secondary" onClick={onExit}>
+            Exit
+          </button>
         </div>
       </div>
     </div>
@@ -815,13 +912,57 @@ export default function ErrorOverlay({ message, onRetry, onExit }) {
 Append to `app/globals.css`:
 
 ```css
-.session-root { position: fixed; inset: 0; background: var(--bg); color: var(--text); }
-.session-overlay { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,0.6); z-index: 50; }
-.session-overlay-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-6); max-width: 420px; box-shadow: var(--shadow); }
-.session-overlay-actions { display: flex; gap: var(--space-3); margin-top: var(--space-4); }
-.session-primary { background: var(--accent); color: #fff; padding: var(--space-3) var(--space-5); border: 0; border-radius: 999px; cursor: pointer; }
-.session-secondary { background: transparent; color: var(--text); padding: var(--space-3) var(--space-5); border: 1px solid var(--border); border-radius: 999px; cursor: pointer; }
-.session-prep-stub, .session-live-stub, .session-ended-stub { display: grid; place-items: center; height: 100%; color: var(--text-muted); }
+.session-root {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+.session-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 50;
+}
+.session-overlay-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-6);
+  max-width: 420px;
+  box-shadow: var(--shadow);
+}
+.session-overlay-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.session-primary {
+  background: var(--accent);
+  color: #fff;
+  padding: var(--space-3) var(--space-5);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.session-secondary {
+  background: transparent;
+  color: var(--text);
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.session-prep-stub,
+.session-live-stub,
+.session-ended-stub {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--text-muted);
+}
 ```
 
 - [ ] **Verify:** `/session/recruiter?threadId=t1&sessionId=s1` shows the mic overlay. Click allow, deny in the browser → error overlay reads "Microphone access is required…"; Retry resets.
@@ -906,7 +1047,9 @@ Replace the body of the prep-handling section in `session-page.js` — use this 
 
 ```js
 useEffect(() => {
-  if (state.phase !== undefined) { /* noop */ }
+  if (state.phase !== undefined) {
+    /* noop */
+  }
 }, []);
 
 // --- real effect ---
@@ -924,7 +1067,10 @@ useEffect(() => {
   if (statePhase() !== "prep") return;
   let cancelled = false;
   (async () => {
-    if (slug === "professor") { dispatch({ type: "PREP_DONE" }); return; }
+    if (slug === "professor") {
+      dispatch({ type: "PREP_DONE" });
+      return;
+    }
     try {
       const slice = state.agents[slug] || {};
       const body = {
@@ -947,13 +1093,20 @@ useEffect(() => {
     } catch {
       if (cancelled) return;
       patchAgent(slug, { researchPrep: { status: "ready", result: null } });
-      pushToast({ message: "Could not fetch external context — continuing without it.", kind: "info" });
+      pushToast({
+        message: "Could not fetch external context — continuing without it.",
+        kind: "info",
+      });
       dispatch({ type: "PREP_DONE" });
     }
   })();
-  return () => { cancelled = true; };
+  return () => {
+    cancelled = true;
+  };
   // Use a small helper to read the current phase from the reducer
-  function statePhase() { return state.__phase || null; }
+  function statePhase() {
+    return state.__phase || null;
+  }
 }, [slug, threadId]);
 ```
 
@@ -969,7 +1122,9 @@ useEffect(() => {
 Render the overlay:
 
 ```js
-{reducerState.phase === "prep" && <PrepOverlay />}
+{
+  reducerState.phase === "prep" && <PrepOverlay />;
+}
 ```
 
 - [ ] **Verify (professor skip):** `/session/professor?...` advances past prep immediately (no network call in Network tab).
@@ -1000,9 +1155,18 @@ export function createWsClient(url) {
   const ws = new WebSocket(url);
   let status = "idle";
 
-  ws.addEventListener("open",  () => { status = "open"; emit("__open__", {}); });
-  ws.addEventListener("close", () => { status = "closed"; emit("__close__", {}); });
-  ws.addEventListener("error", () => { status = "errored"; emit("__error__", {}); });
+  ws.addEventListener("open", () => {
+    status = "open";
+    emit("__open__", {});
+  });
+  ws.addEventListener("close", () => {
+    status = "closed";
+    emit("__close__", {});
+  });
+  ws.addEventListener("error", () => {
+    status = "errored";
+    emit("__error__", {});
+  });
   ws.addEventListener("message", (ev) => {
     try {
       const msg = JSON.parse(ev.data);
@@ -1019,14 +1183,24 @@ export function createWsClient(url) {
       listeners.set(type, next);
     };
   }
-  function emit(type, payload) { (listeners.get(type) || []).forEach((fn) => fn(payload)); }
+  function emit(type, payload) {
+    (listeners.get(type) || []).forEach((fn) => fn(payload));
+  }
 
   function send(obj) {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
   }
-  function close() { try { ws.close(); } catch {} }
-  function getStatus() { return status; }
-  function bufferedAmount() { return ws.bufferedAmount; }
+  function close() {
+    try {
+      ws.close();
+    } catch {}
+  }
+  function getStatus() {
+    return status;
+  }
+  function bufferedAmount() {
+    return ws.bufferedAmount;
+  }
 
   return { on, send, close, getStatus, bufferedAmount };
 }
@@ -1067,7 +1241,13 @@ useEffect(() => {
     }
   });
 
-  return () => { offOpen(); offTranscript(); offError(); offClose(); ws.close(); };
+  return () => {
+    offOpen();
+    offTranscript();
+    offError();
+    offClose();
+    ws.close();
+  };
 }, [reducerState.phase, slug, sessionId, threadId]);
 ```
 
@@ -1101,7 +1281,11 @@ export async function createAnamStream({ sessionToken, videoEl }) {
   const client = createClient(sessionToken);
   await client.streamToVideoElement(videoEl.id || "spark-avatar-video");
   return {
-    stop() { try { client.stopStreaming(); } catch {} },
+    stop() {
+      try {
+        client.stopStreaming();
+      } catch {}
+    },
   };
 }
 ```
@@ -1113,7 +1297,9 @@ import { useEffect, useRef } from "react";
 
 export default function AvatarStage({ onVideoRef }) {
   const ref = useRef(null);
-  useEffect(() => { if (ref.current && onVideoRef) onVideoRef(ref.current); }, [onVideoRef]);
+  useEffect(() => {
+    if (ref.current && onVideoRef) onVideoRef(ref.current);
+  }, [onVideoRef]);
   return (
     <div className="session-avatar-stage">
       <video
@@ -1124,7 +1310,9 @@ export default function AvatarStage({ onVideoRef }) {
         muted={false}
         className="session-avatar-video"
       />
-      <div className="session-avatar-shimmer" data-ready="false">Connecting…</div>
+      <div className="session-avatar-shimmer" data-ready="false">
+        Connecting…
+      </div>
     </div>
   );
 }
@@ -1133,11 +1321,45 @@ export default function AvatarStage({ onVideoRef }) {
 Append CSS:
 
 ```css
-.session-avatar-stage { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: var(--radius); overflow: hidden; }
-.session-avatar-video { width: 100%; height: 100%; object-fit: cover; }
-.session-avatar-shimmer { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-muted); background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.1), rgba(255,255,255,0.04)); background-size: 200% 100%; animation: sparkShimmer 1.4s infinite; }
-.session-avatar-shimmer[data-ready="true"] { display: none; }
-@keyframes sparkShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.session-avatar-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #000;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.session-avatar-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.session-avatar-shimmer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04),
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.04)
+  );
+  background-size: 200% 100%;
+  animation: sparkShimmer 1.4s infinite;
+}
+.session-avatar-shimmer[data-ready="true"] {
+  display: none;
+}
+@keyframes sparkShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
 ```
 
 Inside `SessionPage`, on `live` entry (separate effect):
@@ -1163,27 +1385,37 @@ useEffect(() => {
       if (cancelled || !videoElRef.current) return;
       const stream = await createAnamStream({ sessionToken, videoEl: videoElRef.current });
       anamRef.current = stream;
-      videoElRef.current.addEventListener("loadeddata", () => {
-        const s = document.querySelector(".session-avatar-shimmer");
-        if (s) s.dataset.ready = "true";
-      }, { once: true });
+      videoElRef.current.addEventListener(
+        "loadeddata",
+        () => {
+          const s = document.querySelector(".session-avatar-shimmer");
+          if (s) s.dataset.ready = "true";
+        },
+        { once: true },
+      );
     } catch {
       if (!cancelled) dispatch({ type: "FAIL", message: "Avatar service unavailable" });
     }
   })();
-  return () => { cancelled = true; anamRef.current?.stop(); anamRef.current = null; };
+  return () => {
+    cancelled = true;
+    anamRef.current?.stop();
+    anamRef.current = null;
+  };
 }, [reducerState.phase, slug]);
 ```
 
 Render in the `live` branch:
 
 ```js
-{reducerState.phase === "live" && (
-  <div className="session-stage-grid">
-    <AvatarStage onVideoRef={(el) => (videoElRef.current = el)} />
-    {/* TranscriptLog, ControlsBar, side panel come in later tasks. */}
-  </div>
-)}
+{
+  reducerState.phase === "live" && (
+    <div className="session-stage-grid">
+      <AvatarStage onVideoRef={(el) => (videoElRef.current = el)} />
+      {/* TranscriptLog, ControlsBar, side panel come in later tasks. */}
+    </div>
+  );
+}
 ```
 
 - [ ] **Verify:** with `ANAM_API_KEY` set, avatar video renders within 3s, shimmer disappears on first frame.
@@ -1243,14 +1475,19 @@ export default function TranscriptLog({ entries }) {
     <div className="session-transcript">
       <div className="session-transcript-scroll" ref={scrollerRef} onScroll={onScroll}>
         {entries.map((e, i) => (
-          <div key={i} className={`session-transcript-row session-transcript-${String(e.role).toLowerCase()}`}>
+          <div
+            key={i}
+            className={`session-transcript-row session-transcript-${String(e.role).toLowerCase()}`}
+          >
             <span className="session-transcript-role">{e.role}</span>
             <span className="session-transcript-text">{e.text}</span>
           </div>
         ))}
       </div>
       {stuck && (
-        <button className="session-transcript-jump" onClick={jumpToLatest}>Jump to latest</button>
+        <button className="session-transcript-jump" onClick={jumpToLatest}>
+          Jump to latest
+        </button>
       )}
     </div>
   );
@@ -1260,12 +1497,46 @@ export default function TranscriptLog({ entries }) {
 Append CSS:
 
 ```css
-.session-transcript { position: relative; display: flex; flex-direction: column; height: 100%; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
-.session-transcript-scroll { overflow-y: auto; padding: var(--space-4); flex: 1; }
-.session-transcript-row { margin-bottom: var(--space-3); }
-.session-transcript-role { display: inline-block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-right: var(--space-2); }
-.session-transcript-text { color: var(--text); }
-.session-transcript-jump { position: absolute; bottom: var(--space-3); left: 50%; transform: translateX(-50%); padding: var(--space-2) var(--space-4); background: var(--accent); color: #fff; border: 0; border-radius: 999px; cursor: pointer; }
+.session-transcript {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.session-transcript-scroll {
+  overflow-y: auto;
+  padding: var(--space-4);
+  flex: 1;
+}
+.session-transcript-row {
+  margin-bottom: var(--space-3);
+}
+.session-transcript-role {
+  display: inline-block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-right: var(--space-2);
+}
+.session-transcript-text {
+  color: var(--text);
+}
+.session-transcript-jump {
+  position: absolute;
+  bottom: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
 ```
 
 Render in `SessionPage` (live branch, side column):
@@ -1275,7 +1546,7 @@ const session = (state.sessions[slug] || []).find((s) => s.id === sessionId);
 const entries = session?.transcript || [];
 
 // inside live branch:
-<TranscriptLog entries={entries} />
+<TranscriptLog entries={entries} />;
 ```
 
 - [ ] **Verify:** agent transcript messages stream in and auto-scroll; scrolling up shows the pill; clicking resumes auto-scroll.
@@ -1301,17 +1572,29 @@ Satisfies **R7**, **R8**, **R9**.
 ```js
 // components/session/controls-bar.js
 "use client";
-export default function ControlsBar({ elapsed, muted, onMute, onEnd, canShare, shareActive, onShareToggle }) {
+export default function ControlsBar({
+  elapsed,
+  muted,
+  onMute,
+  onEnd,
+  canShare,
+  shareActive,
+  onShareToggle,
+}) {
   return (
     <div className="session-controls">
       <span className="session-controls-timer">{elapsed}</span>
-      <button className="session-controls-btn" onClick={onMute}>{muted ? "Unmute" : "Mute"}</button>
+      <button className="session-controls-btn" onClick={onMute}>
+        {muted ? "Unmute" : "Mute"}
+      </button>
       {canShare && (
         <button className="session-controls-btn" onClick={onShareToggle}>
           {shareActive ? "Stop sharing" : "Share screen"}
         </button>
       )}
-      <button className="session-controls-btn danger" onClick={onEnd}>End session</button>
+      <button className="session-controls-btn danger" onClick={onEnd}>
+        End session
+      </button>
     </div>
   );
 }
@@ -1336,9 +1619,15 @@ function useElapsedTimer(isLive) {
 const elapsed = useElapsedTimer(reducerState.phase === "live");
 
 const disposeAll = useCallback(() => {
-  try { transcriberRef.current?.close(); } catch {}
-  try { wsRef.current?.close(); } catch {}
-  try { anamRef.current?.stop(); } catch {}
+  try {
+    transcriberRef.current?.close();
+  } catch {}
+  try {
+    wsRef.current?.close();
+  } catch {}
+  try {
+    anamRef.current?.stop();
+  } catch {}
   screenStreamRef.current?.getTracks().forEach((t) => t.stop());
   screenStreamRef.current = null;
   micStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -1364,7 +1653,14 @@ useEffect(() => {
   const endedAt = new Date().toISOString();
   const codingPatch = codingStateRef.current ? { coding: codingStateRef.current } : {};
   patchSession(slug, sessionId, { endedAt, durationLabel, ...codingPatch });
-  patchAgent(slug, { session: { status: "idle", muted: false, lastEndedAt: endedAt, lastDurationLabel: durationLabel } });
+  patchAgent(slug, {
+    session: {
+      status: "idle",
+      muted: false,
+      lastEndedAt: endedAt,
+      lastDurationLabel: durationLabel,
+    },
+  });
   router.push(`/agents/${slug}/sessions/${sessionId}`);
 }, [reducerState.phase]);
 ```
@@ -1402,7 +1698,11 @@ export async function startTranscriber({ token, micStream, onFinal }) {
   await tx.connect();
   tx.stream(micStream);
   return {
-    async close() { try { await tx.close(); } catch {} },
+    async close() {
+      try {
+        await tx.close();
+      } catch {}
+    },
   };
 }
 ```
@@ -1434,7 +1734,11 @@ useEffect(() => {
       pushToast({ message: "Transcription unavailable.", kind: "info" });
     }
   })();
-  return () => { cancelled = true; transcriberRef.current?.close(); transcriberRef.current = null; };
+  return () => {
+    cancelled = true;
+    transcriberRef.current?.close();
+    transcriberRef.current = null;
+  };
 }, [reducerState.phase, muted]);
 ```
 
@@ -1470,9 +1774,18 @@ export async function startScreenShare() {
   return { stream, track: stream.getVideoTracks()[0] };
 }
 
-export function startFrameSampler({ videoEl, onFrame, isBlocked, intervalMs = 500, width = 1280, height = 720, quality = 0.6 }) {
+export function startFrameSampler({
+  videoEl,
+  onFrame,
+  isBlocked,
+  intervalMs = 500,
+  width = 1280,
+  height = 720,
+  quality = 0.6,
+}) {
   const canvas = document.createElement("canvas");
-  canvas.width = width; canvas.height = height;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext("2d");
   const timer = setInterval(() => {
     if (isBlocked()) return;
@@ -1500,7 +1813,9 @@ export default function ScreenSharePanel({ stream, active, onStop }) {
   return (
     <div className="session-share-panel">
       <video ref={videoRef} autoPlay muted playsInline className="session-share-preview" />
-      <button className="session-controls-btn danger" onClick={onStop}>Stop sharing</button>
+      <button className="session-controls-btn danger" onClick={onStop}>
+        Stop sharing
+      </button>
     </div>
   );
 }
@@ -1516,13 +1831,20 @@ export default function PipHandle({ active }) {
   useEffect(() => {
     async function enter() {
       if (!active || !ref.current) return;
-      try { await ref.current.requestPictureInPicture(); } catch {}
+      try {
+        await ref.current.requestPictureInPicture();
+      } catch {}
     }
     async function exit() {
-      try { if (document.pictureInPictureElement) await document.exitPictureInPicture(); } catch {}
+      try {
+        if (document.pictureInPictureElement) await document.exitPictureInPicture();
+      } catch {}
     }
-    if (active) enter(); else exit();
-    return () => { exit(); };
+    if (active) enter();
+    else exit();
+    return () => {
+      exit();
+    };
   }, [active]);
   return <video ref={ref} className="session-pip-handle" muted playsInline autoPlay />;
 }
@@ -1531,10 +1853,27 @@ export default function PipHandle({ active }) {
 Append CSS:
 
 ```css
-.session-share-panel { display: flex; flex-direction: column; gap: var(--space-2); }
-.session-share-preview { width: 100%; border: 1px solid var(--border); border-radius: var(--radius); }
-.session-share-empty { color: var(--text-muted); padding: var(--space-4); }
-.session-pip-handle { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.session-share-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.session-share-preview {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.session-share-empty {
+  color: var(--text-muted);
+  padding: var(--space-4);
+}
+.session-pip-handle {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
 ```
 
 In `SessionPage`:
@@ -1572,11 +1911,14 @@ const handleShareToggle = useCallback(async () => {
     });
     // Attach to hidden video for sampler
     const tempVideo = document.createElement("video");
-    tempVideo.srcObject = stream; tempVideo.muted = true; tempVideo.playsInline = true;
+    tempVideo.srcObject = stream;
+    tempVideo.muted = true;
+    tempVideo.playsInline = true;
     await tempVideo.play();
     stopSamplerRef.current = startFrameSampler({
       videoEl: tempVideo,
-      onFrame: (data) => wsRef.current?.send({ type: "screen_frame", data, mimeType: "image/jpeg" }),
+      onFrame: (data) =>
+        wsRef.current?.send({ type: "screen_frame", data, mimeType: "image/jpeg" }),
       isBlocked: () => (wsRef.current?.bufferedAmount?.() || 0) > 2_000_000,
     });
   } catch {
@@ -1588,10 +1930,16 @@ const handleShareToggle = useCallback(async () => {
 Render inside the live branch:
 
 ```js
-{slug !== "coding" && (
-  <ScreenSharePanel stream={screenStreamRef.current} active={shareActive} onStop={handleShareToggle} />
-)}
-<PipHandle active={shareActive} />
+{
+  slug !== "coding" && (
+    <ScreenSharePanel
+      stream={screenStreamRef.current}
+      active={shareActive}
+      onStop={handleShareToggle}
+    />
+  );
+}
+<PipHandle active={shareActive} />;
 ```
 
 - [ ] **Verify:** click Share screen, pick a tab, tab away. Frames arrive in the server WS at ~2/s (`screen_frame` in Network). Native Stop flips UI back. PiP handle opens and tracks mute/end reachability. Recruiter referenced visible content.
@@ -1636,7 +1984,13 @@ const LANG_MAP = {
   pseudocode: [],
 };
 
-export default function CodeEditorPanel({ question, languages, onSnapshot, onLanguageChange, initialLanguage }) {
+export default function CodeEditorPanel({
+  question,
+  languages,
+  onSnapshot,
+  onLanguageChange,
+  initialLanguage,
+}) {
   const [language, setLanguage] = useState(initialLanguage);
   const [code, setCode] = useState("");
   const debounceRef = useRef(null);
@@ -1666,7 +2020,11 @@ export default function CodeEditorPanel({ question, languages, onSnapshot, onLan
       </div>
       <div className="session-coding-editor">
         <select value={language} onChange={handleLangChange} className="session-controls-btn">
-          {languages.map((l) => <option key={l} value={l}>{l}</option>)}
+          {languages.map((l) => (
+            <option key={l} value={l}>
+              {l}
+            </option>
+          ))}
         </select>
         <CodeMirror value={code} height="100%" extensions={extensions} onChange={handleChange} />
       </div>
@@ -1678,9 +2036,25 @@ export default function CodeEditorPanel({ question, languages, onSnapshot, onLan
 Append CSS:
 
 ```css
-.session-coding { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); height: 100%; }
-.session-coding-question, .session-coding-editor { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-4); overflow: auto; }
-.session-coding-markdown { white-space: pre-wrap; font-family: var(--font-mono); color: var(--text-muted); }
+.session-coding {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  height: 100%;
+}
+.session-coding-question,
+.session-coding-editor {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  overflow: auto;
+}
+.session-coding-markdown {
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
 ```
 
 In `SessionPage`:
@@ -1706,22 +2080,34 @@ useEffect(() => {
 }, [slug, reducerState.phase, codingQuestion]);
 
 // Render, replacing the <ScreenSharePanel> branch for coding:
-{slug === "coding" ? (
-  <CodeEditorPanel
-    question={codingQuestion}
-    languages={(agent?.codingLanguages || []).map((l) => l.toLowerCase())}
-    initialLanguage={(agent?.codingLanguages?.[0] || "javascript").toLowerCase()}
-    onSnapshot={({ snapshot, language }) => {
-      codingStateRef.current = { ...(codingStateRef.current || {}), language, finalCode: snapshot, interviewQuestion: codingStateRef.current?.interviewQuestion || (codingQuestion?.markdown || "") };
-      wsRef.current?.send({ type: "code_snapshot", snapshot, language });
-    }}
-    onLanguageChange={({ language }) => {
-      codingStateRef.current = { ...(codingStateRef.current || {}), language };
-    }}
-  />
-) : (
-  <ScreenSharePanel stream={screenStreamRef.current} active={shareActive} onStop={handleShareToggle} />
-)}
+{
+  slug === "coding" ? (
+    <CodeEditorPanel
+      question={codingQuestion}
+      languages={(agent?.codingLanguages || []).map((l) => l.toLowerCase())}
+      initialLanguage={(agent?.codingLanguages?.[0] || "javascript").toLowerCase()}
+      onSnapshot={({ snapshot, language }) => {
+        codingStateRef.current = {
+          ...(codingStateRef.current || {}),
+          language,
+          finalCode: snapshot,
+          interviewQuestion:
+            codingStateRef.current?.interviewQuestion || codingQuestion?.markdown || "",
+        };
+        wsRef.current?.send({ type: "code_snapshot", snapshot, language });
+      }}
+      onLanguageChange={({ language }) => {
+        codingStateRef.current = { ...(codingStateRef.current || {}), language };
+      }}
+    />
+  ) : (
+    <ScreenSharePanel
+      stream={screenStreamRef.current}
+      active={shareActive}
+      onStop={handleShareToggle}
+    />
+  );
+}
 ```
 
 Also ensure the live-WS effect sets `grounded.coding` for the coding agent:
@@ -1770,17 +2156,19 @@ ws.send({ type: "start_session", grounded: trimGrounded(grounded) });
 Controls render:
 
 ```js
-{reducerState.phase === "live" && (
-  <ControlsBar
-    elapsed={elapsed.label}
-    muted={muted}
-    onMute={handleMute}
-    onEnd={handleEnd}
-    canShare={slug !== "coding"}
-    shareActive={shareActive}
-    onShareToggle={handleShareToggle}
-  />
-)}
+{
+  reducerState.phase === "live" && (
+    <ControlsBar
+      elapsed={elapsed.label}
+      muted={muted}
+      onMute={handleMute}
+      onEnd={handleEnd}
+      canShare={slug !== "coding"}
+      shareActive={shareActive}
+      onShareToggle={handleShareToggle}
+    />
+  );
+}
 ```
 
 - [ ] **Verify:** Network → WS → first outgoing frame for a recruiter session with a long research blob is ≤64KB. Coding session shows no Share button.
@@ -1892,8 +2280,8 @@ This plan extends the AppProvider state shape defined in `agents-and-threads/des
 state.agents[slug].session = {
   status: "idle" | "preflight" | "prep" | "live" | "ended" | "error",
   muted: boolean,
-  lastEndedAt: string | null,        // ISO, set on end or error
-  lastDurationLabel: string | null,  // "MM:SS", set on end or error
+  lastEndedAt: string | null, // ISO, set on end or error
+  lastDurationLabel: string | null, // "MM:SS", set on end or error
 };
 ```
 
@@ -1901,7 +2289,7 @@ state.agents[slug].session = {
 
 ```js
 state.sessions[slug][i].transcript = [
-  { role: "User" | "Agent", text: string, ts: number } // appended via appendTranscript()
+  { role: "User" | "Agent", text: string, ts: number }, // appended via appendTranscript()
 ];
 
 // Coding agent only:
@@ -1911,8 +2299,8 @@ state.sessions[slug][i].coding = {
   interviewQuestion: string,
 };
 
-state.sessions[slug][i].endedAt = string | null;        // ISO, written on end
-state.sessions[slug][i].durationLabel = string | null;  // "MM:SS", written on end
+state.sessions[slug][i].endedAt = string | null; // ISO, written on end
+state.sessions[slug][i].durationLabel = string | null; // "MM:SS", written on end
 ```
 
 ### AppProvider actions this plan relies on

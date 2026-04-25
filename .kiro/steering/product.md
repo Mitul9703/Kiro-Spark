@@ -4,7 +4,7 @@
 
 **Spark** is an AI-powered rehearsal platform. Users practice high-pressure communication scenarios — interviews, pitches, presentations, coding rounds — against live AI avatars and receive a detailed performance report afterward.
 
-The core insight: people often underperform not because they lack knowledge but because they have not trained for the *room*. Spark simulates the room.
+The core insight: people often underperform not because they lack knowledge but because they have not trained for the _room_. Spark simulates the room.
 
 ## Primary user
 
@@ -14,24 +14,24 @@ A solo user preparing for a specific high-stakes session — an upcoming job int
 
 1. Land on `/`, learn the product, click into agents.
 2. Browse `/agents` — five role-specific agents: **Recruiter**, **Professor**, **Investor**, **Coding**, **Custom**.
-3. Open an agent, create a *thread* (a named practice goal that can hold multiple sessions).
+3. Open an agent, create a _thread_ (a named practice goal that can hold multiple sessions).
 4. In the thread page, optionally attach a PDF, paste a company URL, write custom context, then start a session.
 5. Pre-session prep runs in the background: the system fetches relevant external context (company research, coding question, etc.).
 6. The live session opens: the avatar appears, the user grants mic access, and a real-time voice conversation begins. Optional screen share for visual scenarios; an integrated code editor for coding rounds.
 7. The user ends the session. In the background: per-session evaluation runs, then resource discovery, then thread-level evaluation if ≥2 sessions exist.
-8. The user reads the session report — overall score, rubric breakdown, strengths, improvements, recommendations, transcript, comparison-to-previous-session — and the thread report tracks progress over time and produces *hidden guidance* that steers the next session.
+8. The user reads the session report — overall score, rubric breakdown, strengths, improvements, recommendations, transcript, comparison-to-previous-session — and the thread report tracks progress over time and produces _hidden guidance_ that steers the next session.
 
 ## Five role-specific agents
 
 Each agent has its own system prompt, evaluation rubric, screen-share semantics, and external-research behavior.
 
-| Slug | Name | Focus | Screen share | External research |
-|------|------|-------|--------------|-------------------|
-| `recruiter` | Recruiter Loop | Behavioral, impact, role fit | Yes | Yes (company) |
-| `professor` | Academic Defense | Conceptual rigor, evidence, depth | Yes | No |
-| `investor` | Investor Pitch | Market, traction, differentiation, conviction | Yes | Yes (company) |
-| `coding` | Coding Round | Algorithmic reasoning, code clarity, think-aloud | No (uses code editor) | Yes (company-relevant question) |
-| `custom` | Custom Scenario | Adaptable to any prompt | Yes | Yes (URL-driven) |
+| Slug        | Name             | Focus                                            | Screen share          | External research               |
+| ----------- | ---------------- | ------------------------------------------------ | --------------------- | ------------------------------- |
+| `recruiter` | Recruiter Loop   | Behavioral, impact, role fit                     | Yes                   | Yes (company)                   |
+| `professor` | Academic Defense | Conceptual rigor, evidence, depth                | Yes                   | No                              |
+| `investor`  | Investor Pitch   | Market, traction, differentiation, conviction    | Yes                   | Yes (company)                   |
+| `coding`    | Coding Round     | Algorithmic reasoning, code clarity, think-aloud | No (uses code editor) | Yes (company-relevant question) |
+| `custom`    | Custom Scenario  | Adaptable to any prompt                          | Yes                   | Yes (URL-driven)                |
 
 ## Success criteria
 

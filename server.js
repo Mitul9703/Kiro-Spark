@@ -52,26 +52,24 @@ function getGeminiApiKey(task) {
     const value = (process.env[envName] || "").trim();
     if (value) return value;
   }
-  throw new Error(
-    `Missing Gemini API key for task "${task}". Checked: ${candidates.join(", ")}`,
-  );
+  throw new Error(`Missing Gemini API key for task "${task}". Checked: ${candidates.join(", ")}`);
 }
 
 // ─── Anam avatar profiles ─────────────────────────────────────────────────────
 
 const ANAM_AVATAR_PROFILES = [
-  { name: "Kevin",   avatarId: "ccf00c0e-7302-455b-ace2-057e0cf58127", gender: "Male"   },
-  { name: "Gabriel", avatarId: "6cc28442-cccd-42a8-b6e4-24b7210a09c5", gender: "Male"   },
-  { name: "Sophie",  avatarId: "6dbc1e47-7768-403e-878a-94d7fcc3677b", gender: "Female" },
-  { name: "Astrid",  avatarId: "e717a556-2d44-4213-96ec-27d0b94dc198", gender: "Female" },
-  { name: "Cara",    avatarId: "d9ebe82e-2f34-4ff6-9632-16cb73e7de08", gender: "Female" },
-  { name: "Mia",     avatarId: "edf6fdcb-acab-44b8-b974-ded72665ee26", gender: "Female" },
-  { name: "Leo",     avatarId: "d73415e3-d624-45a6-a461-0df1580e73d6", gender: "Male"   },
-  { name: "Richard", avatarId: "19d18eb0-5346-4d50-a77f-26b3723ed79d", gender: "Male"   },
+  { name: "Kevin", avatarId: "ccf00c0e-7302-455b-ace2-057e0cf58127", gender: "Male" },
+  { name: "Gabriel", avatarId: "6cc28442-cccd-42a8-b6e4-24b7210a09c5", gender: "Male" },
+  { name: "Sophie", avatarId: "6dbc1e47-7768-403e-878a-94d7fcc3677b", gender: "Female" },
+  { name: "Astrid", avatarId: "e717a556-2d44-4213-96ec-27d0b94dc198", gender: "Female" },
+  { name: "Cara", avatarId: "d9ebe82e-2f34-4ff6-9632-16cb73e7de08", gender: "Female" },
+  { name: "Mia", avatarId: "edf6fdcb-acab-44b8-b974-ded72665ee26", gender: "Female" },
+  { name: "Leo", avatarId: "d73415e3-d624-45a6-a461-0df1580e73d6", gender: "Male" },
+  { name: "Richard", avatarId: "19d18eb0-5346-4d50-a77f-26b3723ed79d", gender: "Male" },
 ];
 
 const GEMINI_VOICE_BY_GENDER = {
-  Male:   ["Charon"],
+  Male: ["Charon"],
   Female: ["Aoede", "Autonoe", "Despina", "Sulafat"],
 };
 
@@ -90,15 +88,29 @@ function pickRandomAnamProfile() {
 
 const evaluationResponseSchema = {
   type: Type.OBJECT,
-  required: ["score", "summary", "metrics", "strengths", "improvements", "recommendations", "resourceBriefs"],
+  required: [
+    "score",
+    "summary",
+    "metrics",
+    "strengths",
+    "improvements",
+    "recommendations",
+    "resourceBriefs",
+  ],
   properties: {
     score: { type: Type.INTEGER, description: "Overall evaluation score from 0 to 100." },
     summary: { type: Type.STRING, description: "A concise overall summary of the session." },
     metrics: {
-      type: Type.ARRAY, description: "Rubric metrics for this agent.",
+      type: Type.ARRAY,
+      description: "Rubric metrics for this agent.",
       items: {
-        type: Type.OBJECT, required: ["label", "score", "justification"],
-        properties: { label: { type: Type.STRING }, score: { type: Type.INTEGER }, justification: { type: Type.STRING } },
+        type: Type.OBJECT,
+        required: ["label", "score", "justification"],
+        properties: {
+          label: { type: Type.STRING },
+          score: { type: Type.INTEGER },
+          justification: { type: Type.STRING },
+        },
       },
     },
     strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -107,9 +119,12 @@ const evaluationResponseSchema = {
     resourceBriefs: {
       type: Type.ARRAY,
       items: {
-        type: Type.OBJECT, required: ["topic", "improvement", "whyThisMatters", "searchPhrases", "resourceTypes"],
+        type: Type.OBJECT,
+        required: ["topic", "improvement", "whyThisMatters", "searchPhrases", "resourceTypes"],
         properties: {
-          topic: { type: Type.STRING }, improvement: { type: Type.STRING }, whyThisMatters: { type: Type.STRING },
+          topic: { type: Type.STRING },
+          improvement: { type: Type.STRING },
+          whyThisMatters: { type: Type.STRING },
           searchPhrases: { type: Type.ARRAY, items: { type: Type.STRING } },
           resourceTypes: { type: Type.ARRAY, items: { type: Type.STRING } },
         },
@@ -119,15 +134,20 @@ const evaluationResponseSchema = {
 };
 
 const tinyFishArticlesSchema = {
-  type: Type.OBJECT, required: ["resources"],
+  type: Type.OBJECT,
+  required: ["resources"],
   properties: {
     resources: {
       type: Type.ARRAY,
       items: {
-        type: Type.OBJECT, required: ["title", "url", "type", "source", "reason_relevant"],
+        type: Type.OBJECT,
+        required: ["title", "url", "type", "source", "reason_relevant"],
         properties: {
-          title: { type: Type.STRING }, url: { type: Type.STRING }, type: { type: Type.STRING },
-          source: { type: Type.STRING }, reason_relevant: { type: Type.STRING },
+          title: { type: Type.STRING },
+          url: { type: Type.STRING },
+          type: { type: Type.STRING },
+          source: { type: Type.STRING },
+          reason_relevant: { type: Type.STRING },
         },
       },
     },
@@ -136,7 +156,16 @@ const tinyFishArticlesSchema = {
 
 const threadEvaluationResponseSchema = {
   type: Type.OBJECT,
-  required: ["summary", "trajectory", "comments", "strengths", "focusAreas", "nextSessionFocus", "metricTrends", "hiddenGuidance"],
+  required: [
+    "summary",
+    "trajectory",
+    "comments",
+    "strengths",
+    "focusAreas",
+    "nextSessionFocus",
+    "metricTrends",
+    "hiddenGuidance",
+  ],
   properties: {
     summary: { type: Type.STRING },
     trajectory: { type: Type.STRING },
@@ -147,11 +176,20 @@ const threadEvaluationResponseSchema = {
     metricTrends: {
       type: Type.ARRAY,
       items: {
-        type: Type.OBJECT, required: ["label", "trend", "comment"],
-        properties: { label: { type: Type.STRING }, trend: { type: Type.STRING }, comment: { type: Type.STRING } },
+        type: Type.OBJECT,
+        required: ["label", "trend", "comment"],
+        properties: {
+          label: { type: Type.STRING },
+          trend: { type: Type.STRING },
+          comment: { type: Type.STRING },
+        },
       },
     },
-    hiddenGuidance: { type: Type.STRING, description: "Internal-only hidden session guidance for the next live session. Never meant for direct user display." },
+    hiddenGuidance: {
+      type: Type.STRING,
+      description:
+        "Internal-only hidden session guidance for the next live session. Never meant for direct user display.",
+    },
   },
 };
 
@@ -159,13 +197,25 @@ const comparisonResponseSchema = {
   type: Type.OBJECT,
   required: ["trend", "summary", "metrics"],
   properties: {
-    trend: { type: Type.STRING, description: "Overall direction of change. Use improved, mixed, similar, or declined." },
-    summary: { type: Type.STRING, description: "A short comparison inference with minimal wording." },
+    trend: {
+      type: Type.STRING,
+      description: "Overall direction of change. Use improved, mixed, similar, or declined.",
+    },
+    summary: {
+      type: Type.STRING,
+      description: "A short comparison inference with minimal wording.",
+    },
     metrics: {
       type: Type.ARRAY,
       items: {
-        type: Type.OBJECT, required: ["label", "delta", "trend", "insight"],
-        properties: { label: { type: Type.STRING }, delta: { type: Type.INTEGER }, trend: { type: Type.STRING }, insight: { type: Type.STRING } },
+        type: Type.OBJECT,
+        required: ["label", "delta", "trend", "insight"],
+        properties: {
+          label: { type: Type.STRING },
+          delta: { type: Type.INTEGER },
+          trend: { type: Type.STRING },
+          insight: { type: Type.STRING },
+        },
       },
     },
   },
@@ -208,9 +258,7 @@ ${coding.finalCode?.trim() || "No code was saved."}
 
 function normalizeEvaluationResult(agent, rawResult) {
   const criteria = agent.evaluationCriteria || [];
-  const metricsByLabel = new Map(
-    (rawResult.metrics || []).map((metric) => [metric.label, metric]),
-  );
+  const metricsByLabel = new Map((rawResult.metrics || []).map((metric) => [metric.label, metric]));
   const metrics = criteria.map((criterion) => {
     const metric = metricsByLabel.get(criterion.label);
     return {
@@ -223,9 +271,15 @@ function normalizeEvaluationResult(agent, rawResult) {
     score: Math.max(0, Math.min(100, Number(rawResult.score || 0))),
     summary: (rawResult.summary || "").trim(),
     metrics,
-    strengths: Array.isArray(rawResult.strengths) ? rawResult.strengths.filter(Boolean).slice(0, 4) : [],
-    improvements: Array.isArray(rawResult.improvements) ? rawResult.improvements.filter(Boolean).slice(0, 4) : [],
-    recommendations: Array.isArray(rawResult.recommendations) ? rawResult.recommendations.filter(Boolean).slice(0, 4) : [],
+    strengths: Array.isArray(rawResult.strengths)
+      ? rawResult.strengths.filter(Boolean).slice(0, 4)
+      : [],
+    improvements: Array.isArray(rawResult.improvements)
+      ? rawResult.improvements.filter(Boolean).slice(0, 4)
+      : [],
+    recommendations: Array.isArray(rawResult.recommendations)
+      ? rawResult.recommendations.filter(Boolean).slice(0, 4)
+      : [],
     resourceBriefs: Array.isArray(rawResult.resourceBriefs)
       ? rawResult.resourceBriefs
           .map((brief, index) => ({
@@ -233,8 +287,12 @@ function normalizeEvaluationResult(agent, rawResult) {
             topic: (brief.topic || "").trim(),
             improvement: (brief.improvement || "").trim(),
             whyThisMatters: (brief.whyThisMatters || "").trim(),
-            searchPhrases: Array.isArray(brief.searchPhrases) ? brief.searchPhrases.filter(Boolean).slice(0, 3) : [],
-            resourceTypes: Array.isArray(brief.resourceTypes) ? brief.resourceTypes.filter(Boolean).slice(0, 3) : [],
+            searchPhrases: Array.isArray(brief.searchPhrases)
+              ? brief.searchPhrases.filter(Boolean).slice(0, 3)
+              : [],
+            resourceTypes: Array.isArray(brief.resourceTypes)
+              ? brief.resourceTypes.filter(Boolean).slice(0, 3)
+              : [],
           }))
           .filter((brief) => brief.topic && brief.improvement)
           .slice(0, 2)
@@ -245,18 +303,27 @@ function normalizeEvaluationResult(agent, rawResult) {
 function normalizeComparisonResult(agent, rawResult, currentEvaluation, baselineEvaluation) {
   const allowedTrends = new Set(["improved", "mixed", "similar", "declined"]);
   const currentMetrics = Array.isArray(currentEvaluation?.metrics) ? currentEvaluation.metrics : [];
-  const baselineMetrics = Array.isArray(baselineEvaluation?.metrics) ? baselineEvaluation.metrics : [];
+  const baselineMetrics = Array.isArray(baselineEvaluation?.metrics)
+    ? baselineEvaluation.metrics
+    : [];
 
   const metrics = (agent.evaluationCriteria || []).map((criterion) => {
     const currentMetric = currentMetrics.find((item) => item.label === criterion.label);
     const baselineMetric = baselineMetrics.find((item) => item.label === criterion.label);
     const currentValue = typeof currentMetric?.value === "number" ? currentMetric.value : 0;
     const baselineValue = typeof baselineMetric?.value === "number" ? baselineMetric.value : 0;
-    const rawMetric = Array.isArray(rawResult?.metrics) ? rawResult.metrics.find((item) => item.label === criterion.label) : null;
-    const delta = typeof rawMetric?.delta === "number" ? rawMetric.delta : currentValue - baselineValue;
+    const rawMetric = Array.isArray(rawResult?.metrics)
+      ? rawResult.metrics.find((item) => item.label === criterion.label)
+      : null;
+    const delta =
+      typeof rawMetric?.delta === "number" ? rawMetric.delta : currentValue - baselineValue;
     const trend = allowedTrends.has(rawMetric?.trend)
       ? rawMetric.trend
-      : delta > 4 ? "improved" : delta < -4 ? "declined" : "similar";
+      : delta > 4
+        ? "improved"
+        : delta < -4
+          ? "declined"
+          : "similar";
 
     return {
       label: criterion.label,
@@ -264,19 +331,23 @@ function normalizeComparisonResult(agent, rawResult, currentEvaluation, baseline
       baselineValue,
       delta,
       trend,
-      insight: typeof rawMetric?.insight === "string" && rawMetric.insight.trim()
-        ? rawMetric.insight.trim()
-        : delta === 0 ? "This metric stayed broadly steady between the two sessions."
-          : delta > 0 ? "This metric improved in the newer session."
-            : "This metric slipped in the newer session.",
+      insight:
+        typeof rawMetric?.insight === "string" && rawMetric.insight.trim()
+          ? rawMetric.insight.trim()
+          : delta === 0
+            ? "This metric stayed broadly steady between the two sessions."
+            : delta > 0
+              ? "This metric improved in the newer session."
+              : "This metric slipped in the newer session.",
     };
   });
 
   return {
     trend: allowedTrends.has(rawResult?.trend) ? rawResult.trend : "mixed",
-    summary: typeof rawResult?.summary === "string" && rawResult.summary.trim()
-      ? rawResult.summary.trim()
-      : "This session shows mixed movement compared with the selected earlier session.",
+    summary:
+      typeof rawResult?.summary === "string" && rawResult.summary.trim()
+        ? rawResult.summary.trim()
+        : "This session shows mixed movement compared with the selected earlier session.",
     metrics,
   };
 }
@@ -284,15 +355,28 @@ function normalizeComparisonResult(agent, rawResult, currentEvaluation, baseline
 // ─── Firecrawl helpers ────────────────────────────────────────────────────────
 
 function domainFromUrl(url) {
-  try { return new URL(url).hostname.replace(/^www\./, ""); }
-  catch (_) { return ""; }
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch (_) {
+    return "";
+  }
 }
 
 async function searchFirecrawl(query, { limit = 6 } = {}) {
   const response = await fetch("https://api.firecrawl.dev/v1/search", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.FIRECRAWL_API_KEY}` },
-    body: JSON.stringify({ query, limit, location: "United States", timeout: 30000, ignoreInvalidURLs: true, scrapeOptions: { formats: ["markdown"], onlyMainContent: true } }),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`,
+    },
+    body: JSON.stringify({
+      query,
+      limit,
+      location: "United States",
+      timeout: 30000,
+      ignoreInvalidURLs: true,
+      scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
+    }),
   });
   const payload = await response.json();
   if (!response.ok) {
@@ -305,8 +389,18 @@ async function searchFirecrawl(query, { limit = 6 } = {}) {
 async function scrapeWithFirecrawl(url) {
   const response = await fetch("https://api.firecrawl.dev/v2/scrape", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.FIRECRAWL_API_KEY}` },
-    body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true, timeout: 30000, blockAds: true, proxy: "auto" }),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`,
+    },
+    body: JSON.stringify({
+      url,
+      formats: ["markdown"],
+      onlyMainContent: true,
+      timeout: 30000,
+      blockAds: true,
+      proxy: "auto",
+    }),
   });
   const payload = await response.json();
   if (!response.ok || payload?.success === false) {
@@ -336,7 +430,9 @@ Improvement area: ${brief.improvement}
 Why it matters: ${brief.whyThisMatters}
 
 Candidate resources:
-${candidates.map((c, i) => `
+${candidates
+  .map(
+    (c, i) => `
 Candidate ${i + 1}
 - title: ${c.title}
 - url: ${c.url}
@@ -344,7 +440,9 @@ Candidate ${i + 1}
 - type: ${c.type}
 - search snippet: ${c.snippet || "None"}
 - scraped summary: ${(c.scrapedSummary || "").slice(0, 1200) || "None"}
-`).join("\n")}
+`,
+  )
+  .join("\n")}
 
 Return exactly up to 4 resources in JSON.
 Prefer practical, educational, high-signal links.
@@ -357,7 +455,8 @@ Use type values like youtube, article, website, or leetcode.
     model: "gemini-2.5-flash",
     contents: prompt,
     config: {
-      systemInstruction: "You curate improvement resources for a practice app. Select the strongest links from the provided candidates only. Never invent URLs. Prefer practical, credible, and directly relevant resources.",
+      systemInstruction:
+        "You curate improvement resources for a practice app. Select the strongest links from the provided candidates only. Never invent URLs. Prefer practical, credible, and directly relevant resources.",
       responseMimeType: "application/json",
       responseSchema: tinyFishArticlesSchema,
     },
@@ -366,7 +465,13 @@ Use type values like youtube, article, website, or leetcode.
   const parsed = JSON.parse((response.text || "").trim());
   const resources = Array.isArray(parsed?.resources) ? parsed.resources : [];
   return resources
-    .map((r) => ({ title: (r.title || "").trim(), url: (r.url || "").trim(), type: (r.type || "").trim(), source: (r.source || "").trim(), reason: (r.reason_relevant || "").trim() }))
+    .map((r) => ({
+      title: (r.title || "").trim(),
+      url: (r.url || "").trim(),
+      type: (r.type || "").trim(),
+      source: (r.source || "").trim(),
+      reason: (r.reason_relevant || "").trim(),
+    }))
     .filter((r) => r.title && r.url);
 }
 
@@ -407,8 +512,14 @@ async function fetchResourcesForBrief(brief) {
       if (candidate.scrapedSummary) return candidate;
       try {
         const scraped = await scrapeWithFirecrawl(candidate.url);
-        return { ...candidate, source: candidate.source || scraped?.metadata?.title || domainFromUrl(candidate.url), scrapedSummary: (scraped?.markdown || "").slice(0, 1800) };
-      } catch (_) { return candidate; }
+        return {
+          ...candidate,
+          source: candidate.source || scraped?.metadata?.title || domainFromUrl(candidate.url),
+          scrapedSummary: (scraped?.markdown || "").slice(0, 1800),
+        };
+      } catch (_) {
+        return candidate;
+      }
     }),
   );
 
@@ -422,8 +533,11 @@ function normalizeHttpUrl(rawUrl) {
   const trimmed = (rawUrl || "").trim();
   if (!trimmed) return "";
   const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  try { return new URL(withProtocol).toString(); }
-  catch (_) { return ""; }
+  try {
+    return new URL(withProtocol).toString();
+  } catch (_) {
+    return "";
+  }
 }
 
 function companyNameFromUrl(rawUrl) {
@@ -431,20 +545,35 @@ function companyNameFromUrl(rawUrl) {
   if (!normalized) return "";
   try {
     const { hostname } = new URL(normalized);
-    const cleaned = hostname.replace(/^www\./, "").replace(/\.(com|ai|io|org|net|co|app|dev|jobs|careers)$/i, "");
-    return cleaned.split(".").filter(Boolean).map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
-  } catch (_) { return ""; }
+    const cleaned = hostname
+      .replace(/^www\./, "")
+      .replace(/\.(com|ai|io|org|net|co|app|dev|jobs|careers)$/i, "");
+    return cleaned
+      .split(".")
+      .filter(Boolean)
+      .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+      .join(" ");
+  } catch (_) {
+    return "";
+  }
 }
 
 function extractTextFromLangChainContent(content) {
   if (typeof content === "string") return content;
-  if (Array.isArray(content)) return content.map((p) => (typeof p === "string" ? p : p?.text || "")).join("\n");
+  if (Array.isArray(content))
+    return content.map((p) => (typeof p === "string" ? p : p?.text || "")).join("\n");
   if (content && typeof content.text === "string") return content.text;
   return "";
 }
 
 function stripCodeFences(text) {
-  return (text || "").trim().replace(/^```markdown\s*/i, "").replace(/^```md\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "").trim();
+  return (text || "")
+    .trim()
+    .replace(/^```markdown\s*/i, "")
+    .replace(/^```md\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
 }
 
 function normalizeCodingQuestionMarkdown(rawText, companyUrl) {
@@ -462,18 +591,36 @@ function normalizeCodingQuestionMarkdown(rawText, companyUrl) {
 
 function hasGroundedProblemSignals(markdown = "", title = "") {
   const text = `${title}\n${markdown}`.toLowerCase();
-  const checks = [/given\s+an?\s/, /\binput\b/, /\boutput\b/, /\bexample\b/, /\bconstraint/, /\breturn\b/, /\btest case/];
+  const checks = [
+    /given\s+an?\s/,
+    /\binput\b/,
+    /\boutput\b/,
+    /\bexample\b/,
+    /\bconstraint/,
+    /\breturn\b/,
+    /\btest case/,
+  ];
   return checks.reduce((c, p) => c + (p.test(text) ? 1 : 0), 0) >= 3;
 }
 
 function looksLikeWeakInterviewExperienceSource(url = "", title = "") {
   const n = `${url} ${title}`.toLowerCase();
-  return n.includes("interview-experience") || n.includes("my-") || n.includes("experience") || n.includes("medium.com");
+  return (
+    n.includes("interview-experience") ||
+    n.includes("my-") ||
+    n.includes("experience") ||
+    n.includes("medium.com")
+  );
 }
 
 // ─── External research agent ──────────────────────────────────────────────────
 
-async function generateExternalResearchForAgent({ agentSlug, companyUrl, customContext = "", uploadContextText = "" }) {
+async function generateExternalResearchForAgent({
+  agentSlug,
+  companyUrl,
+  customContext = "",
+  uploadContextText = "",
+}) {
   const normalizedUrl = normalizeHttpUrl(companyUrl);
   if (!normalizedUrl) throw new Error("A valid company URL is required.");
   if (!process.env.FIRECRAWL_API_KEY) throw new Error("Missing FIRECRAWL_API_KEY.");
@@ -489,16 +636,31 @@ async function generateExternalResearchForAgent({ agentSlug, companyUrl, customC
     async ({ query, limit = 5 }) => {
       const results = await searchFirecrawl(query, { limit });
       const candidates = normalizeFirecrawlCandidates(results, "website")
-        .map((item) => ({ title: item.title, url: item.url, source: item.source, snippet: item.snippet, likelyWeakSource: looksLikeWeakInterviewExperienceSource(item.url, item.title) }))
+        .map((item) => ({
+          title: item.title,
+          url: item.url,
+          source: item.source,
+          snippet: item.snippet,
+          likelyWeakSource: looksLikeWeakInterviewExperienceSource(item.url, item.title),
+        }))
         .slice(0, limit);
       searchLogs.push({ query, candidates });
-      console.log("[external-research] search", { agentSlug, companyName, query, count: candidates.length });
+      console.log("[external-research] search", {
+        agentSlug,
+        companyName,
+        query,
+        count: candidates.length,
+      });
       return JSON.stringify(candidates);
     },
     {
       name: "search_web_for_coding_questions",
-      description: "Search the public web for actual coding problem pages, company-tagged practice lists, or grounded sources. Use this before scraping.",
-      schema: z.object({ query: z.string().describe("A web search query."), limit: z.number().int().min(1).max(6).optional() }),
+      description:
+        "Search the public web for actual coding problem pages, company-tagged practice lists, or grounded sources. Use this before scraping.",
+      schema: z.object({
+        query: z.string().describe("A web search query."),
+        limit: z.number().int().min(1).max(6).optional(),
+      }),
     },
   );
 
@@ -507,37 +669,65 @@ async function generateExternalResearchForAgent({ agentSlug, companyUrl, customC
       const target = normalizeHttpUrl(url);
       if (!target) throw new Error("A valid URL is required for scraping.");
       const scraped = await scrapeWithFirecrawl(target);
-      const payload = { url: target, title: scraped?.metadata?.title || scraped?.metadata?.ogTitle || domainFromUrl(target), markdown: (scraped?.markdown || "").slice(0, 9000) };
-      const enriched = { ...payload, groundedProblemSignals: hasGroundedProblemSignals(payload.markdown, payload.title), weakSource: looksLikeWeakInterviewExperienceSource(target, payload.title) };
+      const payload = {
+        url: target,
+        title: scraped?.metadata?.title || scraped?.metadata?.ogTitle || domainFromUrl(target),
+        markdown: (scraped?.markdown || "").slice(0, 9000),
+      };
+      const enriched = {
+        ...payload,
+        groundedProblemSignals: hasGroundedProblemSignals(payload.markdown, payload.title),
+        weakSource: looksLikeWeakInterviewExperienceSource(target, payload.title),
+      };
       scrapeCache.set(target, enriched);
-      scrapeLogs.push({ url: target, title: enriched.title, groundedProblemSignals: enriched.groundedProblemSignals });
+      scrapeLogs.push({
+        url: target,
+        title: enriched.title,
+        groundedProblemSignals: enriched.groundedProblemSignals,
+      });
       console.log("[external-research] scrape", { agentSlug, url: target, title: enriched.title });
       return JSON.stringify(enriched);
     },
     {
       name: "scrape_coding_question_source",
-      description: "Scrape one promising page to extract grounded question text, examples, constraints, and evidence.",
-      schema: z.object({ url: z.string().describe("The URL of a promising source page to scrape.") }),
+      description:
+        "Scrape one promising page to extract grounded question text, examples, constraints, and evidence.",
+      schema: z.object({
+        url: z.string().describe("The URL of a promising source page to scrape."),
+      }),
     },
   );
 
-  const llm = new ChatGoogleGenerativeAI({ model: "gemini-2.5-flash", temperature: 0.1, maxRetries: 2, apiKey: getGeminiApiKey("questionFinder") });
+  const llm = new ChatGoogleGenerativeAI({
+    model: "gemini-2.5-flash",
+    temperature: 0.1,
+    maxRetries: 2,
+    apiKey: getGeminiApiKey("questionFinder"),
+  });
 
-  const systemPrompt = agentSlug === "coding"
-    ? `You are a careful research agent selecting exactly one grounded coding interview question for a live technical interview rehearsal.\n\nWorkflow:\n- Search first for reputable public sources such as actual problem pages, company-tagged coding question lists, or well-known prep pages.\n- Prefer LeetCode problem pages, company-tagged question lists, NeetCode-style lists, or public pages that contain a full problem statement.\n- If you find an interview-experience page that only mentions a question title, topic, or data structure, do not stop there. Treat it as a clue and search again for the actual problem page.\n- Scrape the most promising one or two URLs to verify the question details.\n- Choose exactly one question that is plausible for an early-round coding screen.\n\nYour final answer must be markdown only with sections: # Question Title, ## Difficulty, ## Why this question fits, ## Problem Statement, ## Examples, ## Constraints, ## Suggested Test Cases, ## Source, ## Evidence`
-    : agentSlug === "investor"
-      ? `You are a careful research agent preparing hidden diligence context for an investor-style live pitch rehearsal.\n\nWorkflow:\n- Search for authoritative public sources about the target company or product.\n- Prioritize the company site, product/pricing pages, recent news, funding announcements, partnerships, reviews, and market signals.\n- Scrape the most relevant pages and synthesize a concise investor-style brief.\n\nYour final answer must be markdown only with sections: # Company Research Brief, ## Company Snapshot, ## Product and Monetization Signals, ## Recent News and Material Events, ## Market / Competitive Context, ## Investor Pressure Points, ## Source, ## Evidence`
-      : `You are a careful research agent preparing hidden public-context notes for a live rehearsal session.\n\nWorkflow:\n- Search for relevant public sources related to the target URL and the user's optional context.\n- Scrape the most promising pages and synthesize a concise brief.\n\nYour final answer must be markdown only with sections: # External Context Brief, ## What this appears to be, ## Relevant Public Signals, ## Points worth probing, ## Source, ## Evidence`;
+  const systemPrompt =
+    agentSlug === "coding"
+      ? `You are a careful research agent selecting exactly one grounded coding interview question for a live technical interview rehearsal.\n\nWorkflow:\n- Search first for reputable public sources such as actual problem pages, company-tagged coding question lists, or well-known prep pages.\n- Prefer LeetCode problem pages, company-tagged question lists, NeetCode-style lists, or public pages that contain a full problem statement.\n- If you find an interview-experience page that only mentions a question title, topic, or data structure, do not stop there. Treat it as a clue and search again for the actual problem page.\n- Scrape the most promising one or two URLs to verify the question details.\n- Choose exactly one question that is plausible for an early-round coding screen.\n\nYour final answer must be markdown only with sections: # Question Title, ## Difficulty, ## Why this question fits, ## Problem Statement, ## Examples, ## Constraints, ## Suggested Test Cases, ## Source, ## Evidence`
+      : agentSlug === "investor"
+        ? `You are a careful research agent preparing hidden diligence context for an investor-style live pitch rehearsal.\n\nWorkflow:\n- Search for authoritative public sources about the target company or product.\n- Prioritize the company site, product/pricing pages, recent news, funding announcements, partnerships, reviews, and market signals.\n- Scrape the most relevant pages and synthesize a concise investor-style brief.\n\nYour final answer must be markdown only with sections: # Company Research Brief, ## Company Snapshot, ## Product and Monetization Signals, ## Recent News and Material Events, ## Market / Competitive Context, ## Investor Pressure Points, ## Source, ## Evidence`
+        : `You are a careful research agent preparing hidden public-context notes for a live rehearsal session.\n\nWorkflow:\n- Search for relevant public sources related to the target URL and the user's optional context.\n- Scrape the most promising pages and synthesize a concise brief.\n\nYour final answer must be markdown only with sections: # External Context Brief, ## What this appears to be, ## Relevant Public Signals, ## Points worth probing, ## Source, ## Evidence`;
 
-  const codingQuestionAgent = createAgent({ model: llm, tools: [searchTool, scrapeTool], systemPrompt });
+  const codingQuestionAgent = createAgent({
+    model: llm,
+    tools: [searchTool, scrapeTool],
+    systemPrompt,
+  });
 
-  const prompt = agentSlug === "coding"
-    ? `Target company URL: ${normalizedUrl}\nTarget company name: ${companyName}\n\nOptional interview context:\n${customContext?.trim() || "None provided."}\n\nOptional uploaded document context:\n${uploadContextText?.trim() || "None provided."}\n\nFind one coding interview question for this company. Use the tools to search, inspect sources, and return a single grounded question.`
-    : agentSlug === "investor"
-      ? `Target company URL: ${normalizedUrl}\nTarget company name: ${companyName}\n\nOptional investor context:\n${customContext?.trim() || "None provided."}\n\nOptional uploaded document context:\n${uploadContextText?.trim() || "None provided."}\n\nBuild one hidden investor-style diligence brief for this company.`
-      : `Target URL: ${normalizedUrl}\nTarget entity name: ${companyName}\nAgent role: ${agentConfig.name}\n\nOptional scenario context:\n${customContext?.trim() || "None provided."}\n\nOptional uploaded document context:\n${uploadContextText?.trim() || "None provided."}\n\nBuild one hidden external-context brief for this session.`;
+  const prompt =
+    agentSlug === "coding"
+      ? `Target company URL: ${normalizedUrl}\nTarget company name: ${companyName}\n\nOptional interview context:\n${customContext?.trim() || "None provided."}\n\nOptional uploaded document context:\n${uploadContextText?.trim() || "None provided."}\n\nFind one coding interview question for this company. Use the tools to search, inspect sources, and return a single grounded question.`
+      : agentSlug === "investor"
+        ? `Target company URL: ${normalizedUrl}\nTarget company name: ${companyName}\n\nOptional investor context:\n${customContext?.trim() || "None provided."}\n\nOptional uploaded document context:\n${uploadContextText?.trim() || "None provided."}\n\nBuild one hidden investor-style diligence brief for this company.`
+        : `Target URL: ${normalizedUrl}\nTarget entity name: ${companyName}\nAgent role: ${agentConfig.name}\n\nOptional scenario context:\n${customContext?.trim() || "None provided."}\n\nOptional uploaded document context:\n${uploadContextText?.trim() || "None provided."}\n\nBuild one hidden external-context brief for this session.`;
 
-  const result = await codingQuestionAgent.invoke({ messages: [{ role: "user", content: prompt }] });
+  const result = await codingQuestionAgent.invoke({
+    messages: [{ role: "user", content: prompt }],
+  });
 
   const finalMessage = Array.isArray(result?.messages)
     ? [...result.messages].reverse().find((m) => m instanceof AIMessage)
@@ -546,7 +736,14 @@ async function generateExternalResearchForAgent({ agentSlug, companyUrl, customC
   console.log("[external-research] final_raw", { agentSlug, length: rawText.length });
 
   const question = normalizeCodingQuestionMarkdown(rawText, normalizedUrl) || null;
-  console.log("[external-research] generated", { agentSlug, companyUrl: normalizedUrl, found: Boolean(question), title: question?.title || null, searchesRun: searchLogs.length, scrapesRun: scrapeLogs.length });
+  console.log("[external-research] generated", {
+    agentSlug,
+    companyUrl: normalizedUrl,
+    found: Boolean(question),
+    title: question?.title || null,
+    searchesRun: searchLogs.length,
+    scrapesRun: scrapeLogs.length,
+  });
 
   return question;
 }
@@ -567,10 +764,7 @@ function registerLiveBridge(server) {
   wss.on("connection", async (clientSocket, request) => {
     console.log("[live] browser connected");
 
-    const requestUrl = new URL(
-      request?.url || "/api/live",
-      `http://${hostname}:${port}`,
-    );
+    const requestUrl = new URL(request?.url || "/api/live", `http://${hostname}:${port}`);
     const agentSlug = requestUrl.searchParams.get("agent") || "recruiter";
     const voiceName = (requestUrl.searchParams.get("voice") || "").trim();
     const agentConfig = AGENT_LOOKUP[agentSlug] || AGENT_LOOKUP.recruiter;
@@ -1114,9 +1308,9 @@ function registerLiveBridge(server) {
             for (const part of parts) {
               if (part.inlineData?.data) {
                 safeSend({
-                    type: "audio_chunk",
-                    data: part.inlineData.data,
-                    mimeType: part.inlineData.mimeType || "audio/pcm;rate=24000",
+                  type: "audio_chunk",
+                  data: part.inlineData.data,
+                  mimeType: part.inlineData.mimeType || "audio/pcm;rate=24000",
                 });
               }
             }
@@ -1134,8 +1328,8 @@ function registerLiveBridge(server) {
             liveConnected = false;
             if (clientClosed) return;
             safeSend({
-                type: "live_closed",
-                message: `Gemini Live disconnected${event?.reason ? `: ${event.reason}` : ""}`,
+              type: "live_closed",
+              message: `Gemini Live disconnected${event?.reason ? `: ${event.reason}` : ""}`,
             });
           },
         },
@@ -1156,9 +1350,9 @@ function registerLiveBridge(server) {
       assemblyTranscriber.on("turn", (turn) => {
         if (!turn?.transcript) return;
         safeSend({
-            type: "user_transcription",
-            text: turn.transcript,
-            finished: !!turn.end_of_turn,
+          type: "user_transcription",
+          text: turn.transcript,
+          finished: !!turn.end_of_turn,
         });
       });
 
@@ -1167,7 +1361,9 @@ function registerLiveBridge(server) {
         safeSend({ type: "status", message: "User transcription temporarily unavailable." });
       });
 
-      assemblyTranscriber.on("close", () => { assemblyConnected = false; });
+      assemblyTranscriber.on("close", () => {
+        assemblyConnected = false;
+      });
 
       await assemblyTranscriber.connect();
       assemblyConnected = true;
@@ -1184,12 +1380,12 @@ function registerLiveBridge(server) {
           if (sessionBootstrapped) return;
           sessionBootstrapped = true;
 
-          sessionCustomContext      = (msg.customContext || "").trim();
-          sessionThreadContext      = (msg.threadContext || "").trim();
-          sessionUploadContextText  = (msg.upload?.contextText || "").trim();
-          sessionUploadFileName     = (msg.upload?.fileName || "").trim();
-          sessionCompanyUrl         = (msg.companyUrl || "").trim();
-          sessionExternalResearch   = msg.externalResearch || null;
+          sessionCustomContext = (msg.customContext || "").trim();
+          sessionThreadContext = (msg.threadContext || "").trim();
+          sessionUploadContextText = (msg.upload?.contextText || "").trim();
+          sessionUploadFileName = (msg.upload?.fileName || "").trim();
+          sessionCompanyUrl = (msg.companyUrl || "").trim();
+          sessionExternalResearch = msg.externalResearch || null;
 
           console.log("[live] session_context", {
             agentSlug,
@@ -1202,7 +1398,12 @@ function registerLiveBridge(server) {
           try {
             if (clientClosed) return;
             await connectLive();
-            if (clientClosed) { try { await geminiSession?.close(); } catch (_) {} return; }
+            if (clientClosed) {
+              try {
+                await geminiSession?.close();
+              } catch (_) {}
+              return;
+            }
             await connectAssembly();
             if (clientClosed) return;
             kickoffTimer = setTimeout(() => {
@@ -1217,8 +1418,15 @@ function registerLiveBridge(server) {
               return;
             }
             console.error("[live] failed to open session:", error);
-            try { safeSend({ type: "error", message: error.message || "Failed to start Gemini Live session" }); } catch (_) {}
-            try { clientSocket.close(); } catch (_) {}
+            try {
+              safeSend({
+                type: "error",
+                message: error.message || "Failed to start Gemini Live session",
+              });
+            } catch (_) {}
+            try {
+              clientSocket.close();
+            } catch (_) {}
           }
           return;
         }
@@ -1284,9 +1492,16 @@ function registerLiveBridge(server) {
 
         // end_session — clean up
         if (msg.type === "end_session") {
-          if (kickoffTimer) { clearTimeout(kickoffTimer); kickoffTimer = null; }
-          try { await geminiSession?.close(); } catch (_) {}
-          try { await assemblyTranscriber?.close(); } catch (_) {}
+          if (kickoffTimer) {
+            clearTimeout(kickoffTimer);
+            kickoffTimer = null;
+          }
+          try {
+            await geminiSession?.close();
+          } catch (_) {}
+          try {
+            await assemblyTranscriber?.close();
+          } catch (_) {}
           liveConnected = false;
           safeSend({ type: "live_closed", message: "Session ended." });
           return;
@@ -1329,7 +1544,6 @@ function registerLiveBridge(server) {
           sendKickoff(msg.text || "");
           return;
         }
-
       } catch (error) {
         console.error("[live] message error:", error);
         safeSend({ type: "error", message: error.message || "Invalid message" });
@@ -1338,9 +1552,16 @@ function registerLiveBridge(server) {
 
     clientSocket.on("close", async () => {
       clientClosed = true;
-      if (kickoffTimer) { clearTimeout(kickoffTimer); kickoffTimer = null; }
-      try { await geminiSession?.close(); } catch (_) {}
-      try { await assemblyTranscriber?.close(); } catch (_) {}
+      if (kickoffTimer) {
+        clearTimeout(kickoffTimer);
+        kickoffTimer = null;
+      }
+      try {
+        await geminiSession?.close();
+      } catch (_) {}
+      try {
+        await assemblyTranscriber?.close();
+      } catch (_) {}
     });
   }
 
@@ -1429,7 +1650,9 @@ async function startServer() {
       });
     } catch (error) {
       console.error("[anam-session-token] error:", error);
-      return res.status(500).json({ error: "Failed to create Anam session token.", details: error.message });
+      return res
+        .status(500)
+        .json({ error: "Failed to create Anam session token.", details: error.message });
     }
   });
 
@@ -1491,7 +1714,9 @@ ${rawText}`,
       });
     } catch (error) {
       console.error("Deck upload error:", error);
-      return res.status(500).json({ error: "Failed to upload and process PDF.", details: error.message });
+      return res
+        .status(500)
+        .json({ error: "Failed to upload and process PDF.", details: error.message });
     }
   });
 
@@ -1502,7 +1727,11 @@ ${rawText}`,
       const normalizedUrl = normalizeHttpUrl(companyUrl);
 
       if (!normalizedUrl) {
-        return res.json({ ok: true, research: null, message: "No valid company URL was provided." });
+        return res.json({
+          ok: true,
+          research: null,
+          message: "No valid company URL was provided.",
+        });
       }
 
       const research = await generateExternalResearchForAgent({
@@ -1515,32 +1744,49 @@ ${rawText}`,
       return res.json({
         ok: true,
         research,
-        message: research ? "External research fetched." : "No grounded external research could be confirmed.",
+        message: research
+          ? "External research fetched."
+          : "No grounded external research could be confirmed.",
       });
     } catch (error) {
       console.error("External research generation error:", error);
-      return res.status(500).json({ error: "Failed to fetch external research context.", details: error.message });
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch external research context.", details: error.message });
     }
   });
 
   // Session evaluation — calls Gemini with structured JSON schema
   app.post("/api/evaluate-session", async (req, res) => {
     try {
-      const { agentSlug, transcript, upload, coding, customContext, durationLabel, startedAt, endedAt } = req.body || {};
+      const {
+        agentSlug,
+        transcript,
+        upload,
+        coding,
+        customContext,
+        durationLabel,
+        startedAt,
+        endedAt,
+      } = req.body || {};
       const agent = AGENT_LOOKUP[agentSlug] || AGENT_LOOKUP.recruiter;
       const transcriptText = buildTranscriptText(transcript);
 
       if (!transcriptText) {
-        return res.status(400).json({ error: "A completed transcript is required for evaluation." });
+        return res
+          .status(400)
+          .json({ error: "A completed transcript is required for evaluation." });
       }
 
       const criteriaBlock = (agent.evaluationCriteria || [])
         .map((c, i) => `${i + 1}. ${c.label}: ${c.description}`)
         .join("\n");
 
-      const uploadContext = upload?.contextText?.trim() || "No uploaded file context was provided for this session.";
+      const uploadContext =
+        upload?.contextText?.trim() || "No uploaded file context was provided for this session.";
       const codingContext = buildCodingContext(coding);
-      const userContext = customContext?.trim() || "No additional text context was provided for this session.";
+      const userContext =
+        customContext?.trim() || "No additional text context was provided for this session.";
 
       const ai = new GoogleGenAI({ apiKey: getGeminiApiKey("evaluation") });
 
@@ -1627,7 +1873,9 @@ ${transcriptText}
       return res.json({ ok: true, topics });
     } catch (error) {
       console.error("Resource search error:", error);
-      return res.status(500).json({ error: "Failed to fetch improvement resources.", details: error.message });
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch improvement resources.", details: error.message });
     }
   });
 
@@ -1639,7 +1887,9 @@ ${transcriptText}
       const orderedSessions = Array.isArray(sessions) ? [...sessions] : [];
 
       if (!orderedSessions.length) {
-        return res.status(400).json({ error: "At least one completed session is required for thread evaluation." });
+        return res
+          .status(400)
+          .json({ error: "At least one completed session is required for thread evaluation." });
       }
 
       const criteriaBlock = (agent.evaluationCriteria || [])
@@ -1735,7 +1985,9 @@ ${sessionDigest}
       const baselineEvaluation = baselineSession?.evaluation;
 
       if (!currentEvaluation || !baselineEvaluation) {
-        return res.status(400).json({ error: "Two completed session evaluations are required for comparison." });
+        return res
+          .status(400)
+          .json({ error: "Two completed session evaluations are required for comparison." });
       }
 
       const criteriaBlock = (agent.evaluationCriteria || [])
@@ -1788,14 +2040,20 @@ Instructions:
         model: "gemini-2.5-flash",
         contents: comparisonPrompt,
         config: {
-          systemInstruction: 'You compare two saved rehearsal evaluations for the same agent. Be concise, evidence-based, and metric-aware. Address the user directly as "you" and never call them "agent", "speaker", or "candidate".',
+          systemInstruction:
+            'You compare two saved rehearsal evaluations for the same agent. Be concise, evidence-based, and metric-aware. Address the user directly as "you" and never call them "agent", "speaker", or "candidate".',
           responseMimeType: "application/json",
           responseSchema: comparisonResponseSchema,
         },
       });
 
       const parsed = JSON.parse((comparisonResponse.text || "").trim());
-      const comparison = normalizeComparisonResult(agent, parsed, currentEvaluation, baselineEvaluation);
+      const comparison = normalizeComparisonResult(
+        agent,
+        parsed,
+        currentEvaluation,
+        baselineEvaluation,
+      );
 
       return res.json({ ok: true, comparison });
     } catch (error) {

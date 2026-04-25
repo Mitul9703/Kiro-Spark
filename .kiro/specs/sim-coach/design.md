@@ -145,6 +145,7 @@ sequenceDiagram
 **Purpose**: Single-file Express server that serves Next.js, handles all API routes, and runs the WebSocket bridge between the browser and Gemini Live / AssemblyAI.
 
 **Key responsibilities**:
+
 - Serve Next.js via `next()` request handler
 - Handle all `/api/*` HTTP routes
 - Upgrade `/api/live` requests to WebSocket connections
@@ -154,6 +155,7 @@ sequenceDiagram
 - Call Gemini for evaluation, thread evaluation, comparison, and resource curation
 
 **Environment variables**:
+
 ```
 GEMINI_API_KEY                    # fallback for all tasks
 GEMINI_LIVE_API_KEY               # optional, for live sessions
@@ -173,6 +175,7 @@ NEXT_PUBLIC_BACKEND_WS_URL        # optional, for separate deployments
 **Purpose**: React Context provider that manages all client-side state and persists it to `localStorage`. No server-side state storage.
 
 **State shape**:
+
 ```javascript
 {
   theme: "dark" | "light",
@@ -200,6 +203,7 @@ NEXT_PUBLIC_BACKEND_WS_URL        # optional, for separate deployments
 ```
 
 **Key actions**:
+
 - `patchAgent(slug, updater)` — update agent-level state
 - `patchSession(slug, sessionId, updater)` — update a session record
 - `patchThread(slug, threadId, updater)` — update a thread record
@@ -220,6 +224,7 @@ NEXT_PUBLIC_BACKEND_WS_URL        # optional, for separate deployments
 **Purpose**: The live session room. Handles mic capture, WebSocket connection to server, Anam avatar streaming, AssemblyAI transcription display, screen sharing, code editor, and Picture-in-Picture.
 
 **Key behaviors**:
+
 - Requests microphone via `getUserMedia`
 - Opens WebSocket to `/api/live?agent=slug&voice=voiceName`
 - Sends `session_context` message on connect (upload, thread memory, research, custom context)
@@ -233,6 +238,7 @@ NEXT_PUBLIC_BACKEND_WS_URL        # optional, for separate deployments
 - Picture-in-Picture via `documentPictureInPicture` API for screen share sessions
 
 **Audio pipeline**:
+
 ```
 getUserMedia → AudioContext → ScriptProcessor (4096 samples)
   → downsample Float32 to 16kHz → floatTo16BitPCM → base64
@@ -248,6 +254,7 @@ WS { type: "audio_chunk", data: base64 24kHz PCM }
 **Purpose**: Bridges browser audio/video to Gemini Live and AssemblyAI transcription back to browser.
 
 **Message protocol (browser → server)**:
+
 ```javascript
 { type: "session_context", customContext, threadContext, companyUrl, externalResearch, upload }
 { type: "get_history" }
@@ -259,6 +266,7 @@ WS { type: "audio_chunk", data: base64 24kHz PCM }
 ```
 
 **Message protocol (server → browser)**:
+
 ```javascript
 { type: "status", message }
 { type: "model_text", text }
@@ -269,6 +277,7 @@ WS { type: "audio_chunk", data: base64 24kHz PCM }
 ```
 
 **Server-side flow**:
+
 1. Parse `?agent=` and `?voice=` from URL
 2. Look up agent config from `AGENT_LOOKUP`
 3. Create Gemini Live session with agent system prompt + voice
@@ -285,18 +294,21 @@ WS { type: "audio_chunk", data: base64 24kHz PCM }
 ### Component 5: API Routes
 
 **POST /api/anam-session-token**
+
 - Calls Anam REST API to create a session token
 - Picks a random avatar profile from `ANAM_AVATAR_PROFILES` (8 profiles)
 - Picks a matching voice from `GEMINI_VOICE_BY_GENDER`
 - Returns `{ sessionToken, avatarId, voiceName, avatarName }`
 
 **POST /api/upload-deck**
+
 - Accepts `multipart/form-data` with field `deck` (PDF)
 - Parses PDF with `pdf-parse`
 - Sends extracted text to Gemini (`uploadPrep` task key) for cleaning/summarization
 - Returns `{ contextText, contextPreview, fileName }`
 
 **POST /api/agent-external-context**
+
 - Accepts `{ agentSlug, companyUrl, customContext, upload }`
 - Runs LangChain agent with Firecrawl search + scrape tools
 - For `coding` agent: finds a grounded coding interview question
@@ -305,6 +317,7 @@ WS { type: "audio_chunk", data: base64 24kHz PCM }
 - Returns `{ research: { markdown, title, companyName, ... } }`
 
 **POST /api/evaluate-session**
+
 - Accepts `{ agentSlug, sessionId, transcript, upload, coding, customContext, ... }`
 - Builds evaluation prompt from transcript + agent-specific rubric
 - Calls Gemini with structured JSON schema response
@@ -312,17 +325,20 @@ WS { type: "audio_chunk", data: base64 24kHz PCM }
 - Returns `{ evaluation: { score, summary, metrics, strengths, improvements, recommendations, resourceBriefs } }`
 
 **POST /api/evaluate-thread**
+
 - Accepts `{ agentSlug, thread, sessions[] }`
 - Builds longitudinal analysis prompt from all session evaluations
 - Calls Gemini with structured JSON schema response
 - Returns `{ threadEvaluation: { summary, trajectory, comments, strengths, focusAreas, nextSessionFocus, metricTrends, hiddenGuidance } }`
 
 **POST /api/compare-sessions**
+
 - Accepts `{ agentSlug, currentSession, baselineSession }`
 - Calls Gemini to compare two evaluation results
 - Returns `{ comparison: { trend, summary, metrics[] } }`
 
 **POST /api/session-resources**
+
 - Accepts `{ agentSlug, sessionId, resourceBriefs[] }`
 - For each brief: runs two Firecrawl searches (video + article), deduplicates, optionally scrapes, curates with Gemini
 - Returns `{ topics: [{ id, topic, whyThisMatters, items: [{ title, url, type, source, reason }] }] }`
@@ -415,6 +431,7 @@ WS { type: "audio_chunk", data: base64 24kHz PCM }
 ### Agent Config (data/agents.js)
 
 Each agent has:
+
 ```javascript
 {
   slug: string,
@@ -448,23 +465,28 @@ Each agent has:
 ## Frontend Pages
 
 ### / — LandingPage
+
 Hero section with CTA to `/agents`. Three-step "How a session feels" panel.
 
 ### /agents — AgentsPage
+
 Grid of 5 agent cards. Each card shows role badge, duration pill, name, description, focus chips.
 
 ### /agents/[slug] — AgentDetailPage
+
 - Agent info: name, description, scenario, evaluation criteria grid
 - Thread management: create new thread (requires thread name), list existing threads
 - Each thread shows session count, last updated, evaluation summary if available
 
 ### /agents/[slug]/threads/[threadId] — ThreadDetailPage
+
 - Thread overview: session count, average score
 - Create Session form: session name (required), custom context textarea, company URL (coding/investor/custom), PDF upload
 - Thread Evaluation panel: trajectory, next session focus, metric trends, strengths, focus areas, hidden memory
 - Past Sessions list: links to session detail pages
 
 ### /agents/[slug]/sessions/[sessionId] — SessionDetailPage
+
 - Session info: agent, file, thread link, custom context, external research brief
 - Coding workspace (coding agent): language, company URL, interview question markdown, final code
 - Evaluation: score, metric cards with progress bars and justification, strengths, improvements, recommendations
@@ -473,6 +495,7 @@ Grid of 5 agent cards. Each card shows role badge, duration pill, name, descript
 - Transcript: scrollable, expandable
 
 ### /session/[slug] — SessionPage
+
 - Live session room with Anam avatar video
 - Transcript panel (live + finalized entries)
 - Mic mute/unmute control
@@ -484,12 +507,14 @@ Grid of 5 agent cards. Each card shows role badge, duration pill, name, descript
 ## Key Frontend Features
 
 ### CodeMirror Integration
+
 - Languages: JavaScript (jsx), Python, Java, C++, SQL, Pseudocode (plain)
 - Extensions: `EditorView.lineWrapping` always included
 - Debounced code snapshots: 3-second debounce, only sends if code changed since last send
 - Sync states: `idle` | `typing` | `synced` | `waiting`
 
 ### Screen Sharing
+
 - `getDisplayMedia({ video: { frameRate: { ideal: 5, max: 8 } } })`
 - Frame capture: canvas `drawImage` → `toDataURL("image/jpeg", 0.72)` → base64
 - Capture interval: 1200ms
@@ -497,31 +522,37 @@ Grid of 5 agent cards. Each card shows role badge, duration pill, name, descript
 - PiP: `documentPictureInPicture.requestWindow({ width: 360, height: 420 })`
 
 ### Theme Toggle
+
 - Dark/light via `data-theme` attribute on `<html>`
 - CSS custom properties for all colors
 - Persisted in `localStorage` via AppProvider
 
 ### Toast Notifications
+
 - Auto-dismiss after 4 seconds
 - Shown for: evaluation ready, resources ready, comparison ready
 
 ## Error Handling
 
 ### WebSocket
+
 - On `live_closed`: session phase → "ended", trigger cleanup
 - On `error`: session phase → "error", show error message
 - No automatic reconnection (session is considered ended)
 
 ### Evaluation / Resources / Comparison Jobs
+
 - Each job uses an `AbortController` stored in a `useRef` Map
 - Jobs are cancelled when session/thread is deleted
 - Failed jobs show error state with retry option (resources only)
 
 ### Anam Avatar
+
 - If `createClient()` or `streamToVideoElement()` fails, session continues without avatar
 - No explicit fallback UI — avatar area shows empty video element
 
 ### PDF Upload
+
 - Multer stores to `uploads/` directory
 - On parse failure: returns 500 with error message
 - File is deleted after processing (not persisted)
@@ -529,17 +560,20 @@ Grid of 5 agent cards. Each card shows role badge, duration pill, name, descript
 ## Testing Strategy
 
 ### Unit Tests
+
 - Agent config validation (all 5 agents have required fields)
 - `buildTranscriptText()` formatting
 - `normalizeEvaluationResult()` score clamping
 - `pickRandomAnamProfile()` always returns valid profile + voice
 
 ### Integration Tests
+
 - POST /api/evaluate-session with mock Gemini response
 - POST /api/upload-deck with sample PDF
 - WebSocket connection and message routing with mock Gemini Live
 
 ### Property-Based Tests (fast-check)
+
 - Evaluation score always clamped to [0, 100] for any raw Gemini output
 - `deriveResourceBriefs()` always returns 0–2 briefs for any evaluation shape
 - Thread evaluation always produces required fields for any session array

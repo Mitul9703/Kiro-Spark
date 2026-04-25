@@ -9,6 +9,7 @@
 ## Stack
 
 ### Frontend
+
 - **Next.js 15** (App Router) — `^15.3.1`. Pages live under `app/`.
 - **React 19** — `^19.1.0`. Function components, hooks. No class components.
 - **CSS** — single global stylesheet at `app/globals.css` driven by CSS custom properties for theming. No Tailwind, no styled-components, no CSS modules. Inline `className` strings only.
@@ -18,6 +19,7 @@
 - **Buffer polyfill** — `buffer@^6.0.3` for browser-side base64 work.
 
 ### Backend (same `package.json`, single process)
+
 - **Express 5** — `^5.2.1`. Wraps the Next.js handler and adds `/api/*` routes.
 - **ws** — `^8.19.0`. WebSocket server attached to the same HTTP server, mounted at `/api/live`.
 - **multer** — `^2.1.1`. PDF upload handling to a `uploads/` temp dir; files deleted in `finally` after parse.
@@ -27,6 +29,7 @@
 - **cross-env** — `^10.1.0`. Used in npm scripts for portable env var setting.
 
 ### AI providers
+
 - **Gemini** via `@google/genai@^1.46.0`.
   - Live model: `gemini-2.5-flash-native-audio-preview-12-2025` for the realtime voice session.
   - Generation model: `gemini-2.5-flash` for evaluations, comparisons, research synthesis, PDF context cleanup.
@@ -101,7 +104,7 @@ services:
 - **Async jobs**: Tracked client-side in a `useRef(new Map())` of `jobKey → AbortController`; status enum `idle|processing|completed|failed`.
 - **No structured logger** — `console.log`/`console.error` are fine.
 - **No tests directory** — write `scripts/smoke-*.mjs` per endpoint as the regression check.
-- **Comments**: only when the *why* is non-obvious. Default to none.
+- **Comments**: only when the _why_ is non-obvious. Default to none.
 
 ## Forbidden
 

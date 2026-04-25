@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { AGENTS } from "../lib/agents";
 import { getApiUrl } from "../lib/client-config";
 
@@ -246,9 +247,10 @@ function deriveResourceBriefs(agentSlug, evaluation) {
         `${agentSlug} interview ${improvements[0]}`,
         `${sortedMetrics[0]?.label || "communication"} improvement practice`,
       ],
-      resourceTypes: agentSlug === "coding"
-        ? ["youtube", "leetcode", "website"]
-        : ["youtube", "article", "website"],
+      resourceTypes:
+        agentSlug === "coding"
+          ? ["youtube", "leetcode", "website"]
+          : ["youtube", "article", "website"],
     });
   }
 
@@ -264,9 +266,10 @@ function deriveResourceBriefs(agentSlug, evaluation) {
         `${agentSlug} interview ${improvements[1]}`,
         `${sortedMetrics[1]?.label || "practice"} examples`,
       ],
-      resourceTypes: agentSlug === "coding"
-        ? ["youtube", "leetcode", "website"]
-        : ["youtube", "article", "website"],
+      resourceTypes:
+        agentSlug === "coding"
+          ? ["youtube", "leetcode", "website"]
+          : ["youtube", "article", "website"],
     });
   }
 
@@ -283,22 +286,13 @@ export function AppProvider({ children }) {
     }),
   );
   const [mounted, setMounted] = useState(false);
-  const [toasts, setToasts] = useState([]);
   const evaluationJobsRef = useRef(new Map());
   const resourceJobsRef = useRef(new Map());
   const comparisonJobsRef = useRef(new Map());
   const threadJobsRef = useRef(new Map());
 
-  const dismissToast = useCallback((id) => {
-    setToasts((current) => current.filter((toast) => toast.id !== id));
-  }, []);
-
   const pushToast = useCallback((message) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    setToasts((current) => [...current, { id, message }]);
-    window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
-    }, 4000);
+    toast(message);
   }, []);
 
   useEffect(() => {
@@ -360,7 +354,9 @@ export function AppProvider({ children }) {
     const thread = {
       id: `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       agentSlug: slug,
-      title: (title || "").trim() || `${AGENTS.find((agent) => agent.slug === slug)?.name || "Practice"} thread`,
+      title:
+        (title || "").trim() ||
+        `${AGENTS.find((agent) => agent.slug === slug)?.name || "Practice"} thread`,
       createdAt: now,
       updatedAt: now,
       sessionIds: [],
@@ -564,7 +560,9 @@ export function AppProvider({ children }) {
         },
         sessions: {
           ...current.sessions,
-          [slug]: (current.sessions?.[slug] || []).filter((session) => session.threadId !== threadId),
+          [slug]: (current.sessions?.[slug] || []).filter(
+            (session) => session.threadId !== threadId,
+          ),
         },
       }));
     },
@@ -580,7 +578,12 @@ export function AppProvider({ children }) {
       if (!briefs.length) {
         patchSession(session.agentSlug, session.id, (cur) => ({
           ...cur,
-          resources: { ...cur.resources, status: "completed", completedAt: new Date().toISOString(), error: "" },
+          resources: {
+            ...cur.resources,
+            status: "completed",
+            completedAt: new Date().toISOString(),
+            error: "",
+          },
         }));
         return;
       }
@@ -590,14 +593,23 @@ export function AppProvider({ children }) {
 
       patchSession(session.agentSlug, session.id, (cur) => ({
         ...cur,
-        resources: { ...cur.resources, status: "processing", startedAt: cur.resources?.startedAt || new Date().toISOString(), error: "" },
+        resources: {
+          ...cur.resources,
+          status: "processing",
+          startedAt: cur.resources?.startedAt || new Date().toISOString(),
+          error: "",
+        },
       }));
 
       try {
         const response = await fetch(getApiUrl("/api/session-resources"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agentSlug: session.agentSlug, sessionId: session.id, resourceBriefs: briefs }),
+          body: JSON.stringify({
+            agentSlug: session.agentSlug,
+            sessionId: session.id,
+            resourceBriefs: briefs,
+          }),
           signal: abortController.signal,
         });
 
@@ -606,7 +618,13 @@ export function AppProvider({ children }) {
 
         patchSession(session.agentSlug, session.id, (cur) => ({
           ...cur,
-          resources: { ...cur.resources, status: "completed", completedAt: new Date().toISOString(), topics: payload.topics || [], error: "" },
+          resources: {
+            ...cur.resources,
+            status: "completed",
+            completedAt: new Date().toISOString(),
+            topics: payload.topics || [],
+            error: "",
+          },
         }));
 
         pushToast(`${session.agentName || "Session"} resources are ready.`);
@@ -614,7 +632,12 @@ export function AppProvider({ children }) {
         if (abortController.signal.aborted) return;
         patchSession(session.agentSlug, session.id, (cur) => ({
           ...cur,
-          resources: { ...cur.resources, status: "failed", failedAt: new Date().toISOString(), error: error.message || "Resource search failed." },
+          resources: {
+            ...cur.resources,
+            status: "failed",
+            failedAt: new Date().toISOString(),
+            error: error.message || "Resource search failed.",
+          },
         }));
       } finally {
         resourceJobsRef.current.delete(jobKey);
@@ -669,7 +692,12 @@ export function AppProvider({ children }) {
       patchThread(slug, threadId, (cur) => ({
         ...cur,
         updatedAt: new Date().toISOString(),
-        evaluation: { ...cur.evaluation, status: "processing", startedAt: cur.evaluation?.startedAt || new Date().toISOString(), error: "" },
+        evaluation: {
+          ...cur.evaluation,
+          status: "processing",
+          startedAt: cur.evaluation?.startedAt || new Date().toISOString(),
+          error: "",
+        },
       }));
 
       try {
@@ -678,7 +706,12 @@ export function AppProvider({ children }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             agentSlug: slug,
-            thread: { id: thread.id, title: thread.title, createdAt: thread.createdAt, updatedAt: thread.updatedAt },
+            thread: {
+              id: thread.id,
+              title: thread.title,
+              createdAt: thread.createdAt,
+              updatedAt: thread.updatedAt,
+            },
             sessions: completedSessions.map((session) => ({
               id: session.id,
               sessionName: session.sessionName,
@@ -718,7 +751,12 @@ export function AppProvider({ children }) {
         if (abortController.signal.aborted) return;
         patchThread(slug, threadId, (cur) => ({
           ...cur,
-          evaluation: { ...cur.evaluation, status: "failed", failedAt: new Date().toISOString(), error: error.message || "Thread evaluation failed." },
+          evaluation: {
+            ...cur.evaluation,
+            status: "failed",
+            failedAt: new Date().toISOString(),
+            error: error.message || "Thread evaluation failed.",
+          },
         }));
       } finally {
         threadJobsRef.current.delete(jobKey);
@@ -737,7 +775,12 @@ export function AppProvider({ children }) {
 
       patchSession(session.agentSlug, session.id, (cur) => ({
         ...cur,
-        evaluation: { ...cur.evaluation, status: "processing", startedAt: cur.evaluation?.startedAt || cur.endedAt || new Date().toISOString(), error: "" },
+        evaluation: {
+          ...cur.evaluation,
+          status: "processing",
+          startedAt: cur.evaluation?.startedAt || cur.endedAt || new Date().toISOString(),
+          error: "",
+        },
       }));
 
       try {
@@ -767,7 +810,10 @@ export function AppProvider({ children }) {
           ...cur,
           evaluation: {
             status: "completed",
-            startedAt: cur.evaluation?.startedAt || session.evaluation?.startedAt || new Date().toISOString(),
+            startedAt:
+              cur.evaluation?.startedAt ||
+              session.evaluation?.startedAt ||
+              new Date().toISOString(),
             completedAt: new Date().toISOString(),
             result: payload.evaluation,
             error: "",
@@ -787,14 +833,19 @@ export function AppProvider({ children }) {
         if (abortController.signal.aborted) return;
         patchSession(session.agentSlug, session.id, (cur) => ({
           ...cur,
-          evaluation: { ...cur.evaluation, status: "failed", failedAt: new Date().toISOString(), error: error.message || "Evaluation failed." },
+          evaluation: {
+            ...cur.evaluation,
+            status: "failed",
+            failedAt: new Date().toISOString(),
+            error: error.message || "Evaluation failed.",
+          },
         }));
         pushToast(`${session.agentName || "Session"} evaluation could not be completed.`);
       } finally {
         evaluationJobsRef.current.delete(jobKey);
       }
     },
-    [patchSession, pushToast, runResourceJob],
+    [patchSession, pushToast],
   );
 
   const requestResourceFetch = useCallback(
@@ -818,14 +869,25 @@ export function AppProvider({ children }) {
         (item) => item.id === baselineSessionId,
       );
 
-      if (!baselineSession || session.evaluation?.status !== "completed" || baselineSession.evaluation?.status !== "completed") return;
+      if (
+        !baselineSession ||
+        session.evaluation?.status !== "completed" ||
+        baselineSession.evaluation?.status !== "completed"
+      )
+        return;
 
       const abortController = new AbortController();
       comparisonJobsRef.current.set(jobKey, abortController);
 
       patchSession(session.agentSlug, session.id, (cur) => ({
         ...cur,
-        comparison: { ...cur.comparison, status: "processing", baselineSessionId, startedAt: new Date().toISOString(), error: "" },
+        comparison: {
+          ...cur.comparison,
+          status: "processing",
+          baselineSessionId,
+          startedAt: new Date().toISOString(),
+          error: "",
+        },
       }));
 
       try {
@@ -835,12 +897,18 @@ export function AppProvider({ children }) {
           body: JSON.stringify({
             agentSlug: session.agentSlug,
             currentSession: {
-              id: session.id, startedAt: session.startedAt, endedAt: session.endedAt,
-              durationLabel: session.durationLabel, evaluation: session.evaluation.result,
+              id: session.id,
+              startedAt: session.startedAt,
+              endedAt: session.endedAt,
+              durationLabel: session.durationLabel,
+              evaluation: session.evaluation.result,
             },
             baselineSession: {
-              id: baselineSession.id, startedAt: baselineSession.startedAt, endedAt: baselineSession.endedAt,
-              durationLabel: baselineSession.durationLabel, evaluation: baselineSession.evaluation.result,
+              id: baselineSession.id,
+              startedAt: baselineSession.startedAt,
+              endedAt: baselineSession.endedAt,
+              durationLabel: baselineSession.durationLabel,
+              evaluation: baselineSession.evaluation.result,
             },
           }),
           signal: abortController.signal,
@@ -851,7 +919,13 @@ export function AppProvider({ children }) {
 
         patchSession(session.agentSlug, session.id, (cur) => ({
           ...cur,
-          comparison: { status: "completed", baselineSessionId, completedAt: new Date().toISOString(), result: payload.comparison, error: "" },
+          comparison: {
+            status: "completed",
+            baselineSessionId,
+            completedAt: new Date().toISOString(),
+            result: payload.comparison,
+            error: "",
+          },
         }));
 
         pushToast(`${session.agentName || "Session"} comparison is ready.`);
@@ -859,7 +933,13 @@ export function AppProvider({ children }) {
         if (abortController.signal.aborted) return;
         patchSession(session.agentSlug, session.id, (cur) => ({
           ...cur,
-          comparison: { ...cur.comparison, status: "failed", baselineSessionId, failedAt: new Date().toISOString(), error: error.message || "Comparison failed." },
+          comparison: {
+            ...cur.comparison,
+            status: "failed",
+            baselineSessionId,
+            failedAt: new Date().toISOString(),
+            error: error.message || "Comparison failed.",
+          },
         }));
       } finally {
         comparisonJobsRef.current.delete(jobKey);
@@ -925,12 +1005,16 @@ export function AppProvider({ children }) {
         sessions: state.sessions,
       }),
     );
-    document.documentElement.dataset.theme = state.theme;
   }, [mounted, state]);
 
   useEffect(() => {
     if (!mounted) return;
-    document.documentElement.dataset.theme = state.theme;
+    const root = document.documentElement;
+    if (state.theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
   }, [mounted, state.theme]);
 
   useEffect(() => {
@@ -958,26 +1042,30 @@ export function AppProvider({ children }) {
         }
       });
     });
-  }, [mounted, runComparisonJob, runEvaluationJob, runResourceJob, runThreadEvaluationJob, state.sessions, state.threads]);
+  }, [
+    mounted,
+    runComparisonJob,
+    runEvaluationJob,
+    runResourceJob,
+    runThreadEvaluationJob,
+    state.sessions,
+    state.threads,
+  ]);
 
   useEffect(() => {
+    const evaluationJobs = evaluationJobsRef.current;
+    const resourceJobs = resourceJobsRef.current;
+    const comparisonJobs = comparisonJobsRef.current;
+    const threadJobs = threadJobsRef.current;
     return () => {
-      for (const controller of evaluationJobsRef.current.values()) {
-        controller.abort();
-      }
-      evaluationJobsRef.current.clear();
-      for (const controller of resourceJobsRef.current.values()) {
-        controller.abort();
-      }
-      resourceJobsRef.current.clear();
-      for (const controller of comparisonJobsRef.current.values()) {
-        controller.abort();
-      }
-      comparisonJobsRef.current.clear();
-      for (const controller of threadJobsRef.current.values()) {
-        controller.abort();
-      }
-      threadJobsRef.current.clear();
+      for (const controller of evaluationJobs.values()) controller.abort();
+      evaluationJobs.clear();
+      for (const controller of resourceJobs.values()) controller.abort();
+      resourceJobs.clear();
+      for (const controller of comparisonJobs.values()) controller.abort();
+      comparisonJobs.clear();
+      for (const controller of threadJobs.values()) controller.abort();
+      threadJobs.clear();
     };
   }, []);
 
@@ -1051,12 +1139,9 @@ export function AppProvider({ children }) {
       applyThreadMemory,
       retryEvaluation,
       retryThreadEvaluation,
-      dismissToast,
-      toasts,
     }),
     [
       createSessionRecord,
-      dismissToast,
       mounted,
       patchAgent,
       patchSession,
@@ -1074,7 +1159,6 @@ export function AppProvider({ children }) {
       applyThreadMemory,
       retryEvaluation,
       retryThreadEvaluation,
-      toasts,
     ],
   );
 

@@ -201,20 +201,20 @@ Default factory:
 
 ```js
 const defaultAgentSlice = () => ({
-  upload: { status: 'idle', fileName: null, contextText: '', previewUrl: null, error: null },
-  sessionName: '',
-  threadName: '',
-  customContextText: '',
-  companyUrl: '',
+  upload: { status: "idle", fileName: null, contextText: "", previewUrl: null, error: null },
+  sessionName: "",
+  threadName: "",
+  customContextText: "",
+  companyUrl: "",
   researchPrep: null,
   selectedThreadId: null,
-  session: { status: 'idle', muted: false, lastEndedAt: null, lastDurationLabel: null },
+  session: { status: "idle", muted: false, lastEndedAt: null, lastDurationLabel: null },
   evaluation: null,
   rating: 0,
 });
 
 const defaultState = {
-  theme: 'dark',
+  theme: "dark",
   toasts: [],
   agents: {},
   threads: {},
@@ -243,7 +243,7 @@ appendTranscript(slug: string, sessionId: string, entry: TranscriptEntry): void
 All five entries live in `data/agents.json`. `data/agents.js` is the default-export wrapper:
 
 ```js
-import agents from './agents.json';
+import agents from "./agents.json";
 export default agents;
 ```
 
@@ -260,26 +260,59 @@ export default agents;
 - **previewMetrics:**
   ```json
   [
-    { "label": "Communication clarity", "value": 82, "justification": "Answers were structured; occasional filler words in the second story." },
-    { "label": "Impact storytelling", "value": 74, "justification": "Strong situation framing; impact numbers missing in the migration example." },
-    { "label": "Ownership signals", "value": 80, "justification": "Used 'I' appropriately and named specific decisions." },
-    { "label": "Role fit", "value": 78, "justification": "Motivation tied back to product, weaker on team-level fit." }
+    {
+      "label": "Communication clarity",
+      "value": 82,
+      "justification": "Answers were structured; occasional filler words in the second story."
+    },
+    {
+      "label": "Impact storytelling",
+      "value": 74,
+      "justification": "Strong situation framing; impact numbers missing in the migration example."
+    },
+    {
+      "label": "Ownership signals",
+      "value": 80,
+      "justification": "Used 'I' appropriately and named specific decisions."
+    },
+    {
+      "label": "Role fit",
+      "value": 78,
+      "justification": "Motivation tied back to product, weaker on team-level fit."
+    }
   ]
   ```
 - **evaluationCriteria:**
   ```json
   [
-    { "label": "Communication clarity", "description": "Pacing, structure, and conciseness of spoken answers." },
-    { "label": "Impact storytelling", "description": "Concrete outcomes, numbers, and the candidate's specific contribution." },
-    { "label": "Ownership signals", "description": "Uses first-person appropriately; names decisions, not just outcomes." },
-    { "label": "Role fit", "description": "Motivation and skills align with the posted role and team." },
-    { "label": "Question quality", "description": "Candidate questions show research and curiosity." }
+    {
+      "label": "Communication clarity",
+      "description": "Pacing, structure, and conciseness of spoken answers."
+    },
+    {
+      "label": "Impact storytelling",
+      "description": "Concrete outcomes, numbers, and the candidate's specific contribution."
+    },
+    {
+      "label": "Ownership signals",
+      "description": "Uses first-person appropriately; names decisions, not just outcomes."
+    },
+    {
+      "label": "Role fit",
+      "description": "Motivation and skills align with the posted role and team."
+    },
+    {
+      "label": "Question quality",
+      "description": "Candidate questions show research and curiosity."
+    }
   ]
   ```
 - **systemPrompt:**
+
   > You are a senior technical recruiter conducting a first-round behavioral screen for the company referenced in the user's shared materials. Your style is warm, crisp, and direct. The call is 20 to 25 minutes. You have the candidate's resume and the company's current job posting in your context. Open by introducing yourself by a realistic name and role, confirm the candidate can hear you, and ask them to walk you through their background in about two minutes. Then drive a structured behavioral loop: ask for a specific past situation relevant to the role, and follow up with STAR probes — "what was the situation", "what was your task", "what exactly did you do", "what was the result, in numbers if you can". Do not let the candidate drift into generalities; if they say "we" repeatedly, ask what they personally did. Aim to cover two deep-dive stories. Transition to motivation and role fit: ask why this company and why this role now. Reserve the last four minutes for the candidate's questions and answer them honestly from the context you have. Never award the role on the call. Never discuss compensation unless the candidate asks directly. If the candidate shares their screen, glance at it and reference what you see by name. Speak one thought at a time; keep your turns under 25 seconds so the candidate has room to respond. If the candidate goes quiet for more than six seconds, prompt gently. End with a clear statement of next steps in the process.
 
 - **evaluationPrompt:**
+
   > You are an impartial interview coach reviewing the transcript of a 20–25 minute recruiter screen. The candidate's objective was to demonstrate communication clarity, impact storytelling, ownership, and role fit for the company and role named in the context. Return a strict JSON object with: `overallScore` (0–100), `metrics` (array of four objects, one per focus area, each with `label`, `value` 0–100, and a one-sentence `justification` grounded in a quoted moment from the transcript), `strengths` (two to three bullet strings), `improvements` (two to three bullet strings, each paired with the rubric item it addresses), `recommendations` (three bullet strings with concrete practice drills — e.g., "rerun the migration story with two numeric outcomes"), and `summary` (one paragraph, no more than 80 words). Penalize vague "we did" answers in the Ownership metric. Penalize missing numeric outcomes in Impact storytelling. Reward concise openings and strong candidate-asked questions. Do not invent details not present in the transcript. If the transcript is shorter than 800 characters, lower `overallScore` by 20 points and mark the session as under-length in `summary`. Output valid JSON only, no prose outside the JSON.
 
 - **mockEvaluation:** same shape as the real evaluator returns (four metrics listed above, `overallScore: 79`, two strengths, two improvements, three recommendations, short summary). Used for SSR/preview.
@@ -303,26 +336,56 @@ export default agents;
 - **previewMetrics:**
   ```json
   [
-    { "label": "Conceptual clarity", "value": 76, "justification": "Defined the core term precisely; the second definition wavered." },
-    { "label": "Evidence & rigor", "value": 68, "justification": "Two citations given; one was misattributed." },
-    { "label": "Depth of understanding", "value": 72, "justification": "Handled the first edge case; conflated two methods in the second." },
-    { "label": "Composure", "value": 84, "justification": "Paused, restated, answered — no defensiveness." }
+    {
+      "label": "Conceptual clarity",
+      "value": 76,
+      "justification": "Defined the core term precisely; the second definition wavered."
+    },
+    {
+      "label": "Evidence & rigor",
+      "value": 68,
+      "justification": "Two citations given; one was misattributed."
+    },
+    {
+      "label": "Depth of understanding",
+      "value": 72,
+      "justification": "Handled the first edge case; conflated two methods in the second."
+    },
+    {
+      "label": "Composure",
+      "value": 84,
+      "justification": "Paused, restated, answered — no defensiveness."
+    }
   ]
   ```
 - **evaluationCriteria:**
   ```json
   [
-    { "label": "Conceptual clarity", "description": "Terms are defined precisely and used consistently." },
-    { "label": "Evidence & rigor", "description": "Claims are supported with methods, citations, or reasoning." },
-    { "label": "Depth of understanding", "description": "Handles edge cases, tradeoffs, and counter-examples." },
+    {
+      "label": "Conceptual clarity",
+      "description": "Terms are defined precisely and used consistently."
+    },
+    {
+      "label": "Evidence & rigor",
+      "description": "Claims are supported with methods, citations, or reasoning."
+    },
+    {
+      "label": "Depth of understanding",
+      "description": "Handles edge cases, tradeoffs, and counter-examples."
+    },
     { "label": "Composure", "description": "Pauses, thinks, and responds without defensiveness." },
-    { "label": "Contribution framing", "description": "Articulates what is novel and why it matters." }
+    {
+      "label": "Contribution framing",
+      "description": "Articulates what is novel and why it matters."
+    }
   ]
   ```
 - **systemPrompt:**
+
   > You are a tenured faculty examiner conducting a rigorous oral defense of the topic or thesis the user named in their context. You have spent twenty years on this subject. Your style is calm, precise, and politely skeptical. The session is 25 to 30 minutes. Begin by asking the candidate to state their central claim and their contribution in two sentences. Then drive four movements. First, probe definitions: every time the candidate introduces a term of art, ask them to define it; if the definition is fuzzy, offer a tighter one and ask whether they accept it. Second, ask for evidence: "what is the strongest study that supports this", "what is the weakest", "what would falsify your claim". Third, present an edge case or a counter-example and ask how their framework handles it. Fourth, ask them to name their specific contribution and to distinguish it from the nearest adjacent work. Do not let the candidate pivot to personal narrative. If they say "I feel", redirect to "what is the evidence". Reward precise language. Push back on hand-waving phrases like "kind of" or "basically". If the candidate asks you a question, answer briefly and return the floor to them. Your tone is never hostile, but you never let an imprecise answer pass uncorrected. Keep turns under 20 seconds to leave room for thinking. End with a single-sentence summary of what the candidate defended well and one area to tighten.
 
 - **evaluationPrompt:**
+
   > You are an external examiner scoring an oral defense transcript against four criteria: conceptual clarity, evidence and rigor, depth of understanding, and composure. Return a strict JSON object with: `overallScore` (0–100), `metrics` (array of four objects with `label`, `value`, and `justification` each quoting one specific exchange from the transcript), `strengths` (two bullets), `improvements` (two to three bullets, each naming a specific moment and a fix), `recommendations` (three drill suggestions, e.g., "rehearse the definition of X in under 15 words"), and `summary` (80 words max). Penalize filler phrases such as "kind of" and "basically" in the clarity metric. Penalize any uncited numeric claim in evidence and rigor. Reward visible pauses followed by structured answers in composure. Never invent a claim the candidate did not make. If the candidate failed to state a central claim in their first turn, deduct 10 points from `overallScore` and flag this in `summary`. Output valid JSON only.
 
 - **mockEvaluation:** Four metrics above, `overallScore: 75`, strengths, improvements, recommendations, summary. Used for previews.
@@ -346,26 +409,56 @@ export default agents;
 - **previewMetrics:**
   ```json
   [
-    { "label": "Market clarity", "value": 70, "justification": "Bottom-up TAM stated; top-down check missing." },
-    { "label": "Traction evidence", "value": 66, "justification": "MRR mentioned; retention cohorts not shown." },
-    { "label": "Differentiation", "value": 78, "justification": "Clear wedge vs. the two named incumbents." },
-    { "label": "Conviction", "value": 82, "justification": "Strong why-now tied to a regulatory change." }
+    {
+      "label": "Market clarity",
+      "value": 70,
+      "justification": "Bottom-up TAM stated; top-down check missing."
+    },
+    {
+      "label": "Traction evidence",
+      "value": 66,
+      "justification": "MRR mentioned; retention cohorts not shown."
+    },
+    {
+      "label": "Differentiation",
+      "value": 78,
+      "justification": "Clear wedge vs. the two named incumbents."
+    },
+    {
+      "label": "Conviction",
+      "value": 82,
+      "justification": "Strong why-now tied to a regulatory change."
+    }
   ]
   ```
 - **evaluationCriteria:**
   ```json
   [
-    { "label": "Market clarity", "description": "Top-down and bottom-up sizing are both present and realistic." },
-    { "label": "Traction evidence", "description": "Specific metrics, cohorts, and growth rates; no vanity numbers." },
-    { "label": "Differentiation", "description": "Clear wedge versus named incumbents or substitutes." },
+    {
+      "label": "Market clarity",
+      "description": "Top-down and bottom-up sizing are both present and realistic."
+    },
+    {
+      "label": "Traction evidence",
+      "description": "Specific metrics, cohorts, and growth rates; no vanity numbers."
+    },
+    {
+      "label": "Differentiation",
+      "description": "Clear wedge versus named incumbents or substitutes."
+    },
     { "label": "Conviction", "description": "Why now, why this team, stated with specifics." },
-    { "label": "Ask clarity", "description": "Round size, use of funds, and milestones are explicit." }
+    {
+      "label": "Ask clarity",
+      "description": "Round size, use of funds, and milestones are explicit."
+    }
   ]
   ```
 - **systemPrompt:**
+
   > You are a partner at an early-stage venture fund doing a first meeting with the founder whose company is referenced in the shared deck and URL. You write checks between $250k and $3M. Your style is direct and time-boxed. You interrupt. You ask for the number. The meeting is 15 to 20 minutes. Start by asking for the 60-second hook: "what does your company do, for whom, and why now, in one minute". Then give them three minutes uninterrupted to pitch, timing it in your head. After the pitch, drive four probes. Market: push for both top-down and bottom-up sizing; reject "everybody" as a customer; ask who churned first and why. Traction: ask for the last 90 days of specific numbers — MRR, weekly actives, retention cohort at week 8; reject vanity metrics like cumulative signups. Differentiation: ask them to name the two closest competitors and why they win against each one, specifically. Why now and why you: one sentence each, backed by a signal the founder personally saw. Close with the ask: round size, valuation expectation if offered, and the three milestones this round buys. Your tone is respectful and fast. Do not give advice mid-pitch; save observations for the end. If the founder waves their hands, say "give me the number". If they say a metric, ask what the denominator is. Keep your turns under 15 seconds unless you are summarizing.
 
 - **evaluationPrompt:**
+
   > You are a deal partner writing an internal memo after a 20-minute founder meeting. Score the transcript against four criteria: market clarity, traction evidence, differentiation, and conviction. Return a strict JSON object with `overallScore` (0–100), `metrics` (four entries, each with `label`, `value`, and a `justification` quoting one founder line from the transcript), `strengths` (two bullets), `improvements` (two to three bullets, each naming a specific missing number or claim), `recommendations` (three drill suggestions — e.g., "rehearse the 60-second hook until you can deliver it in 50 seconds without hedges"), and `summary` (80 words max). Penalize any use of vanity metrics (cumulative signups, total addressable visits) in traction. Penalize unqualified superlatives ("we are the only", "everyone needs this") in differentiation. Reward specific dates, numeric deltas, and founder-observed signals in conviction. Do not invent numbers. If the founder failed to state an ask by the end of the transcript, deduct 15 points and note this in `summary`. Output valid JSON only.
 
 - **mockEvaluation:** Four metrics as above, `overallScore: 74`, strengths, improvements, recommendations, summary.
@@ -389,26 +482,59 @@ export default agents;
 - **previewMetrics:**
   ```json
   [
-    { "label": "Problem understanding", "value": 80, "justification": "Restated the problem in own words; missed one constraint on input size." },
-    { "label": "Algorithmic reasoning", "value": 72, "justification": "Chose an O(n log n) approach; did not consider the O(n) hash solution until prompted." },
-    { "label": "Code clarity", "value": 78, "justification": "Readable names; one off-by-one corrected after testing." },
-    { "label": "Communication while coding", "value": 70, "justification": "Strong early narration; went silent during the implementation for ~2 minutes." }
+    {
+      "label": "Problem understanding",
+      "value": 80,
+      "justification": "Restated the problem in own words; missed one constraint on input size."
+    },
+    {
+      "label": "Algorithmic reasoning",
+      "value": 72,
+      "justification": "Chose an O(n log n) approach; did not consider the O(n) hash solution until prompted."
+    },
+    {
+      "label": "Code clarity",
+      "value": 78,
+      "justification": "Readable names; one off-by-one corrected after testing."
+    },
+    {
+      "label": "Communication while coding",
+      "value": 70,
+      "justification": "Strong early narration; went silent during the implementation for ~2 minutes."
+    }
   ]
   ```
 - **evaluationCriteria:**
   ```json
   [
-    { "label": "Problem understanding", "description": "Restates the problem, clarifies constraints, and names inputs/outputs explicitly." },
-    { "label": "Algorithmic reasoning", "description": "Considers multiple approaches with time and space complexity before coding." },
-    { "label": "Code clarity", "description": "Readable names, clean control flow, reasonable decomposition." },
-    { "label": "Communication while coding", "description": "Narrates intent while typing; does not disappear into the keyboard." },
-    { "label": "Testing and edge cases", "description": "Runs the code mentally or in the editor against normal, empty, and extreme inputs." }
+    {
+      "label": "Problem understanding",
+      "description": "Restates the problem, clarifies constraints, and names inputs/outputs explicitly."
+    },
+    {
+      "label": "Algorithmic reasoning",
+      "description": "Considers multiple approaches with time and space complexity before coding."
+    },
+    {
+      "label": "Code clarity",
+      "description": "Readable names, clean control flow, reasonable decomposition."
+    },
+    {
+      "label": "Communication while coding",
+      "description": "Narrates intent while typing; does not disappear into the keyboard."
+    },
+    {
+      "label": "Testing and edge cases",
+      "description": "Runs the code mentally or in the editor against normal, empty, and extreme inputs."
+    }
   ]
   ```
 - **systemPrompt:**
+
   > You are a senior engineer from the company referenced in the user's context conducting a 40-minute technical interview. You have one problem for them, drawn from the provided question or a close variant of it. Your style is calm, curious, and precise. Open by introducing yourself briefly, confirm the candidate has the editor open, and state the problem clearly. Read it once fully, then read the constraints. Give the candidate 60 to 90 seconds before expecting a response. Drive the interview in four phases. First, clarification: encourage the candidate to restate the problem in their own words and to ask about input ranges, duplicates, empty inputs, and whether they can mutate the input. Second, approach: require them to articulate at least two candidate approaches with big-O time and space before they touch the keyboard. If they jump straight to code, gently redirect: "before you type, what is the shape of the solution". Third, implementation: let them code. Ask them to narrate while typing. If they go silent for more than 30 seconds, ask "what are you thinking". Spot off-by-ones, mis-indexed loops, and unhandled empties and nudge by asking "what happens when the input is empty". Fourth, testing: ask them to dry-run on one nominal and one edge case. Close by asking for one optimization they did not implement. Never give the answer. Never grade on the call. Your turns stay under 15 seconds. If the candidate asks whether they can use a library, say yes unless it trivializes the problem.
 
 - **evaluationPrompt:**
+
   > You are a hiring-committee reviewer scoring a technical interview transcript plus the final code submission. Score against four criteria: problem understanding, algorithmic reasoning, code clarity, and communication while coding. Return a strict JSON object with `overallScore` (0–100), `metrics` (four entries, each with `label`, `value`, and a `justification` that quotes a specific moment from the transcript or a specific line from the code), `strengths` (two bullets), `improvements` (two to three bullets, each naming a specific missed clarification, missed complexity analysis, or silent coding window), `recommendations` (three drill suggestions, e.g., "rerun this problem and say your big-O out loud before typing"), and `summary` (80 words max). Penalize jumping to code without stating complexity. Penalize unhandled edge cases in the final code. Reward explicit re-statement of the problem and proactive edge-case enumeration. Do not invent code the candidate did not write. If the final code fails on the stated constraints, deduct 20 points and mark this in `summary`. Output valid JSON only.
 
 - **mockEvaluation:** Four metrics as above, `overallScore: 75`, strengths, improvements, recommendations, summary.
@@ -458,26 +584,59 @@ export default agents;
 - **previewMetrics:**
   ```json
   [
-    { "label": "Clarity", "value": 78, "justification": "Opening statement was tight; middle section used one jargon term without unpacking." },
-    { "label": "Specificity", "value": 72, "justification": "One concrete example; second point stayed general." },
-    { "label": "Audience handling", "value": 80, "justification": "Adjusted tone when the counterpart expressed confusion." },
-    { "label": "Adaptability", "value": 76, "justification": "Changed approach after the second pushback; recovered the thread well." }
+    {
+      "label": "Clarity",
+      "value": 78,
+      "justification": "Opening statement was tight; middle section used one jargon term without unpacking."
+    },
+    {
+      "label": "Specificity",
+      "value": 72,
+      "justification": "One concrete example; second point stayed general."
+    },
+    {
+      "label": "Audience handling",
+      "value": 80,
+      "justification": "Adjusted tone when the counterpart expressed confusion."
+    },
+    {
+      "label": "Adaptability",
+      "value": 76,
+      "justification": "Changed approach after the second pushback; recovered the thread well."
+    }
   ]
   ```
 - **evaluationCriteria:**
   ```json
   [
-    { "label": "Clarity", "description": "Core message lands in under 30 seconds and stays consistent." },
-    { "label": "Specificity", "description": "Claims are backed by specific examples, numbers, or observations." },
-    { "label": "Audience handling", "description": "Tone and vocabulary match the counterpart named in the scenario." },
-    { "label": "Adaptability", "description": "Responds to pushback by reframing rather than repeating." },
-    { "label": "Close", "description": "Ends with a clear next step or a decision, not a trail-off." }
+    {
+      "label": "Clarity",
+      "description": "Core message lands in under 30 seconds and stays consistent."
+    },
+    {
+      "label": "Specificity",
+      "description": "Claims are backed by specific examples, numbers, or observations."
+    },
+    {
+      "label": "Audience handling",
+      "description": "Tone and vocabulary match the counterpart named in the scenario."
+    },
+    {
+      "label": "Adaptability",
+      "description": "Responds to pushback by reframing rather than repeating."
+    },
+    {
+      "label": "Close",
+      "description": "Ends with a clear next step or a decision, not a trail-off."
+    }
   ]
   ```
 - **systemPrompt:**
+
   > You are an adaptable conversational counterpart. The user has described, in their context field and shared URL, exactly who they want you to be — a podcast host interviewing them about their startup, a skeptical enterprise buyer pressing on ROI, a conference Q&A attendee, a worried parent, a nonprofit board member, or anything else. Read their scenario carefully and inhabit that role fully. Your first move is to confirm the framing in one short sentence and then open the conversation as that character would. Stay in character throughout. Your persona's intent, stakes, and knowledge come from the user's context. If the context is thin, pick the most plausible version of the role and state your assumptions in one sentence before beginning. Drive the conversation with the arc implied by the scenario: a podcast host asks, listens, and probes; a skeptical buyer objects and asks for proof; a board member focuses on risk and governance. Adapt tone, vocabulary, and pacing to the role. Keep turns under 25 seconds to give the user space to respond. If the user drifts out of the frame, gently steer back. Close the session with something fitting for the scenario — a sign-off line from a host, a "we'll get back to you" from a buyer, a summary motion from a board chair. Never break character to give meta advice; the evaluation step will do that.
 
 - **evaluationPrompt:**
+
   > You are a communications coach reviewing a transcript of a user-defined rehearsal. The four criteria are clarity, specificity, audience handling, and adaptability. The user's scenario description is included in the context. Return a strict JSON object with `overallScore` (0–100), `metrics` (four entries with `label`, `value`, `justification` grounded in a quoted moment), `strengths` (two bullets), `improvements` (two to three bullets, each naming the rubric item it addresses), `recommendations` (three drill suggestions shaped to the scenario — e.g., "run the same pitch against a hostile buyer variant"), and `summary` (80 words max). Calibrate the rubric to the scenario: a podcast warrants different audience handling than a board meeting. Penalize jargon that the described counterpart would not know. Reward visible reframes after pushback. Do not invent scenario elements not present in the context or the transcript. If the user drifted out of the described frame for more than 25% of the session, flag this in `summary` and deduct up to 10 points. Output valid JSON only.
 
 - **mockEvaluation:** Four metrics as above, `overallScore: 76`, strengths, improvements, recommendations, summary.
@@ -490,14 +649,14 @@ export default agents;
 
 ## 6. Routing & Navigation
 
-| Route | Params | Renders |
-| ----- | ------ | ------- |
-| `/` | — | `<LandingPage/>` |
-| `/agents` | — | `<AgentsPage/>` |
-| `/agents/[slug]` | `slug` | `<AgentDetailPage slug={slug}/>` |
-| `/agents/[slug]/threads/[threadId]` | `slug`, `threadId` | `<ThreadDetailPage slug={slug} threadId={threadId}/>` |
-| `/agents/[slug]/sessions/[sessionId]` | `slug`, `sessionId` | `<SessionDetailPage/>` (owned by: evaluation-engine) — placeholder here |
-| `/session/[slug]` | `slug`, query: `threadId`, `sessionId` | `<SessionPage/>` (owned by: live-session) — placeholder here |
+| Route                                 | Params                                 | Renders                                                                 |
+| ------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------- |
+| `/`                                   | —                                      | `<LandingPage/>`                                                        |
+| `/agents`                             | —                                      | `<AgentsPage/>`                                                         |
+| `/agents/[slug]`                      | `slug`                                 | `<AgentDetailPage slug={slug}/>`                                        |
+| `/agents/[slug]/threads/[threadId]`   | `slug`, `threadId`                     | `<ThreadDetailPage slug={slug} threadId={threadId}/>`                   |
+| `/agents/[slug]/sessions/[sessionId]` | `slug`, `sessionId`                    | `<SessionDetailPage/>` (owned by: evaluation-engine) — placeholder here |
+| `/session/[slug]`                     | `slug`, query: `threadId`, `sessionId` | `<SessionPage/>` (owned by: live-session) — placeholder here            |
 
 Each `app/**/page.js` file is at most 30 lines: it imports the component from `components/`, forwards params, and returns `<Shell>…</Shell>`.
 
@@ -510,11 +669,16 @@ All styles live in `app/globals.css`. There is no Tailwind, no CSS modules. CSS 
 ```css
 :root {
   --radius: 14px;
-  --accent: #4285f4;          /* Google Blue */
+  --accent: #4285f4; /* Google Blue */
   --font-body: "Google Sans Text", "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
   --font-mono: "SFMono-Regular", "IBM Plex Mono", "Fira Code", ui-monospace, monospace;
-  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
-  --space-5: 24px; --space-6: 32px; --space-7: 48px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
 }
 
 html[data-theme="dark"] {
@@ -553,17 +717,17 @@ Breakpoints:
 
 ## 9. Error Handling
 
-| Failure | Response |
-| ------- | -------- |
-| Unknown agent slug in URL | `AgentDetailPage` renders `<div className="not-found">Agent not found</div>` and a link back to `/agents`. No state mutation. |
-| Unknown threadId in URL | `ThreadDetailPage` renders "Thread not found" and a link back to `/agents/<slug>`. |
-| Corrupt localStorage JSON | `catch` → `console.warn('spark-state-v1 corrupt, resetting')` → continue with `defaultState`. |
-| Missing top-level keys in restored state | Each missing key is filled from `defaultState`; restore proceeds. |
-| `pushToast` with empty message | Ignored (no toast added). |
-| Mutator called with unknown slug/ID | `console.warn` and no-op. |
-| Start-session clicked with empty session name | Button is disabled; no navigation occurs. |
-| Catalog load failure | `AgentsPage` renders "Unable to load agents" once; inline fallback message. |
-| QuotaExceededError on write | Catch, push a `warn` toast, keep in-memory state. |
+| Failure                                       | Response                                                                                                                      |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Unknown agent slug in URL                     | `AgentDetailPage` renders `<div className="not-found">Agent not found</div>` and a link back to `/agents`. No state mutation. |
+| Unknown threadId in URL                       | `ThreadDetailPage` renders "Thread not found" and a link back to `/agents/<slug>`.                                            |
+| Corrupt localStorage JSON                     | `catch` → `console.warn('spark-state-v1 corrupt, resetting')` → continue with `defaultState`.                                 |
+| Missing top-level keys in restored state      | Each missing key is filled from `defaultState`; restore proceeds.                                                             |
+| `pushToast` with empty message                | Ignored (no toast added).                                                                                                     |
+| Mutator called with unknown slug/ID           | `console.warn` and no-op.                                                                                                     |
+| Start-session clicked with empty session name | Button is disabled; no navigation occurs.                                                                                     |
+| Catalog load failure                          | `AgentsPage` renders "Unable to load agents" once; inline fallback message.                                                   |
+| QuotaExceededError on write                   | Catch, push a `warn` toast, keep in-memory state.                                                                             |
 
 ## 10. Testing Strategy
 

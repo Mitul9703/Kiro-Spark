@@ -24,32 +24,32 @@ Design commitments:
   "currentSession": {
     "id": "session-1735000002000-ee11ff22",
     "startedAt": 1735000002000,
-    "endedAt":   1735000302000,
+    "endedAt": 1735000302000,
     "durationLabel": "5m 00s",
     "evaluation": {
       "status": "completed",
       "score": 78,
       "metrics": [
         { "label": "Impact clarity", "value": 82 },
-        { "label": "Structure",      "value": 74 },
-        { "label": "Role fit",       "value": 80 },
-        { "label": "Delivery",       "value": 76 }
+        { "label": "Structure", "value": 74 },
+        { "label": "Role fit", "value": 80 },
+        { "label": "Delivery", "value": 76 }
       ]
     }
   },
   "baselineSession": {
     "id": "session-1734900001000-aabbccdd",
     "startedAt": 1734900001000,
-    "endedAt":   1734900241000,
+    "endedAt": 1734900241000,
     "durationLabel": "4m 00s",
     "evaluation": {
       "status": "completed",
       "score": 68,
       "metrics": [
         { "label": "Impact clarity", "value": 70 },
-        { "label": "Structure",      "value": 78 },
-        { "label": "Role fit",       "value": 66 },
-        { "label": "Delivery",       "value": 60 }
+        { "label": "Structure", "value": 78 },
+        { "label": "Role fit", "value": 66 },
+        { "label": "Delivery", "value": 60 }
       ]
     }
   }
@@ -100,7 +100,10 @@ Any failure → HTTP 400 with `{ error, details }`. The `details` field carries 
 ### 2.5 Error response
 
 ```json
-{ "error": "current session is not completed", "details": { "field": "currentSession.evaluation.status" } }
+{
+  "error": "current session is not completed",
+  "details": { "field": "currentSession.evaluation.status" }
+}
 ```
 
 Fallback response (Gemini down) uses HTTP 200 and adds `error`:
@@ -271,12 +274,12 @@ On `components/session-detail-page.js`, the Comparison panel sits below the main
 
 Chips inherit shared theme tokens:
 
-| Trend     | Background var        | Foreground var            |
-|-----------|-----------------------|---------------------------|
-| improved  | `--chip-success-bg`   | `--chip-success-fg`       |
-| mixed     | `--chip-warning-bg`   | `--chip-warning-fg`       |
-| similar   | `--chip-neutral-bg`   | `--chip-neutral-fg`       |
-| declined  | `--chip-danger-bg`    | `--chip-danger-fg`        |
+| Trend    | Background var      | Foreground var      |
+| -------- | ------------------- | ------------------- |
+| improved | `--chip-success-bg` | `--chip-success-fg` |
+| mixed    | `--chip-warning-bg` | `--chip-warning-fg` |
+| similar  | `--chip-neutral-bg` | `--chip-neutral-fg` |
+| declined | `--chip-danger-bg`  | `--chip-danger-fg`  |
 
 ### 6.4 Panel visibility
 
@@ -288,12 +291,12 @@ A native `<select>`. Each `<option value={session.id}>` renders `${session.name 
 
 ### 6.6 States
 
-| State       | Rendered                                                                 |
-|-------------|--------------------------------------------------------------------------|
-| idle        | Dropdown + Compare button only                                           |
-| processing  | Dropdown disabled, Compare button disabled, inline spinner               |
-| completed   | Trend chip + summary + metric table + small "Run again" link             |
-| failed      | Red inline error + "Retry" button (reuses last `baselineSessionId`)      |
+| State      | Rendered                                                            |
+| ---------- | ------------------------------------------------------------------- |
+| idle       | Dropdown + Compare button only                                      |
+| processing | Dropdown disabled, Compare button disabled, inline spinner          |
+| completed  | Trend chip + summary + metric table + small "Run again" link        |
+| failed     | Red inline error + "Retry" button (reuses last `baselineSessionId`) |
 
 ## 7. Contract changes
 
@@ -332,15 +335,15 @@ Adds one job key namespace: `comparison:${sessionId}`.
 
 ## 8. Error handling
 
-| Case                                        | Handling                                                                                      |
-|---------------------------------------------|-----------------------------------------------------------------------------------------------|
-| Missing baseline selection                  | Compare button disabled; `runComparison` not called.                                          |
-| Baseline session no longer completed        | `runComparison` pre-check sets `status='failed'` with message; no request sent.               |
-| Mismatched agent slugs                      | Backend returns 400 `{ error:'agent mismatch' }`; frontend shows message verbatim.            |
-| Gemini timeout / invalid JSON / 5xx         | Backend falls back to mechanical; response includes `error:'gemini_failed'`. UI shows result plus a subtle notice "Summary unavailable". |
-| Network error                               | `status='failed'`, `error` holds `err.message`; Retry button re-invokes with same baseline.   |
-| Component unmount mid-flight                | Cleanup effect calls `controller.abort()`; fetch rejects with AbortError; mutator ignores it. |
-| User picks a new baseline mid-flight        | Next `runComparison` call aborts prior controller before creating its own.                    |
+| Case                                 | Handling                                                                                                                                 |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Missing baseline selection           | Compare button disabled; `runComparison` not called.                                                                                     |
+| Baseline session no longer completed | `runComparison` pre-check sets `status='failed'` with message; no request sent.                                                          |
+| Mismatched agent slugs               | Backend returns 400 `{ error:'agent mismatch' }`; frontend shows message verbatim.                                                       |
+| Gemini timeout / invalid JSON / 5xx  | Backend falls back to mechanical; response includes `error:'gemini_failed'`. UI shows result plus a subtle notice "Summary unavailable". |
+| Network error                        | `status='failed'`, `error` holds `err.message`; Retry button re-invokes with same baseline.                                              |
+| Component unmount mid-flight         | Cleanup effect calls `controller.abort()`; fetch rejects with AbortError; mutator ignores it.                                            |
+| User picks a new baseline mid-flight | Next `runComparison` call aborts prior controller before creating its own.                                                               |
 
 ## 9. Testing strategy
 

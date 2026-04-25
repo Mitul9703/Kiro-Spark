@@ -24,18 +24,18 @@ If any of these are missing, stop and surface the gap — do not stub them insid
 
 ## File Map
 
-| Path | Purpose |
-|---|---|
-| `server/evaluation.js` | `evaluateSession`, `evaluateThread` Express handlers plus `composeSessionPrompt`, `composeThreadPrompt`, `normalizeSessionEvaluation`, `normalizeThreadEvaluation`, `resolveGeminiKey`, `safeSessionDefaults`, `safeThreadDefaults`, `clamp`. |
-| `server.js` | Mount `POST /api/evaluate-session` and `POST /api/evaluate-thread`. |
-| `components/app-provider.js` | Extend reducer + action bag with `evaluation` / `memory` slices and mutators (`startEvaluation`, `completeEvaluation`, `failEvaluation`, `retryEvaluation`, thread variants, `applyThreadMemory`). Add two auto-trigger `useEffect` loops and the unmount-abort cleanup. |
-| `components/session-detail-page.js` | Replace stub with score card, rubric bars, three-column lists, resource-brief cards, transcript display, status-aware states (idle / processing / completed / failed), retry button. |
-| `components/thread-detail-page.js` | Append thread-evaluation card (trajectory pill, metric-trend table, strengths/focus areas, next-session focus) and collapsed `<details>` labeled "Hidden memory — internal, used to steer next session". |
-| `app/globals.css` | New tokens/rules: `.eval-card`, `.eval-score`, `.eval-metric`, `.eval-metric-bar`, `.eval-columns`, `.eval-brief`, `.transcript`, `.transcript-turn--user`, `.transcript-turn--agent`, `.thread-eval-card`, `.trend-pill--improving|stable|declining`. |
-| `scripts/fixtures/recruiter-transcript.json` | Fixture transcript + context for the session smoke. |
-| `scripts/fixtures/recruiter-thread.json` | Fixture thread + two pre-evaluated sessions for the thread smoke. |
-| `scripts/smoke-evaluate-session.mjs` | POST the session fixture; assert shape. |
-| `scripts/smoke-evaluate-thread.mjs` | POST the thread fixture; assert shape and `hiddenGuidance`. |
+| Path                                         | Purpose                                                                                                                                                                                                                                                                  |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ----------- |
+| `server/evaluation.js`                       | `evaluateSession`, `evaluateThread` Express handlers plus `composeSessionPrompt`, `composeThreadPrompt`, `normalizeSessionEvaluation`, `normalizeThreadEvaluation`, `resolveGeminiKey`, `safeSessionDefaults`, `safeThreadDefaults`, `clamp`.                            |
+| `server.js`                                  | Mount `POST /api/evaluate-session` and `POST /api/evaluate-thread`.                                                                                                                                                                                                      |
+| `components/app-provider.js`                 | Extend reducer + action bag with `evaluation` / `memory` slices and mutators (`startEvaluation`, `completeEvaluation`, `failEvaluation`, `retryEvaluation`, thread variants, `applyThreadMemory`). Add two auto-trigger `useEffect` loops and the unmount-abort cleanup. |
+| `components/session-detail-page.js`          | Replace stub with score card, rubric bars, three-column lists, resource-brief cards, transcript display, status-aware states (idle / processing / completed / failed), retry button.                                                                                     |
+| `components/thread-detail-page.js`           | Append thread-evaluation card (trajectory pill, metric-trend table, strengths/focus areas, next-session focus) and collapsed `<details>` labeled "Hidden memory — internal, used to steer next session".                                                                 |
+| `app/globals.css`                            | New tokens/rules: `.eval-card`, `.eval-score`, `.eval-metric`, `.eval-metric-bar`, `.eval-columns`, `.eval-brief`, `.transcript`, `.transcript-turn--user`, `.transcript-turn--agent`, `.thread-eval-card`, `.trend-pill--improving                                      | stable | declining`. |
+| `scripts/fixtures/recruiter-transcript.json` | Fixture transcript + context for the session smoke.                                                                                                                                                                                                                      |
+| `scripts/fixtures/recruiter-thread.json`     | Fixture thread + two pre-evaluated sessions for the thread smoke.                                                                                                                                                                                                        |
+| `scripts/smoke-evaluate-session.mjs`         | POST the session fixture; assert shape.                                                                                                                                                                                                                                  |
+| `scripts/smoke-evaluate-thread.mjs`          | POST the thread fixture; assert shape and `hiddenGuidance`.                                                                                                                                                                                                              |
 
 ---
 
@@ -344,19 +344,19 @@ Other plans consume the slices this one writes. Keep these stable — breaking c
 
 ## Requirements coverage
 
-| Req | Tasks |
-|---|---|
-| R1 (per-session endpoint) | 1, 2, 3, 4 |
-| R2 (thread endpoint) | 6, 7, 8 |
-| R3 (session auto-trigger) | 9, 10 |
-| R4 (thread auto-trigger) | 9, 11 |
-| R5 (retry on failure) | 9, 12, 14 |
-| R6 (score normalization) | 2 |
-| R7 (hidden memory generation) | 6, 7, 11 |
+| Req                                            | Tasks            |
+| ---------------------------------------------- | ---------------- |
+| R1 (per-session endpoint)                      | 1, 2, 3, 4       |
+| R2 (thread endpoint)                           | 6, 7, 8          |
+| R3 (session auto-trigger)                      | 9, 10            |
+| R4 (thread auto-trigger)                       | 9, 11            |
+| R5 (retry on failure)                          | 9, 12, 14        |
+| R6 (score normalization)                       | 2                |
+| R7 (hidden memory generation)                  | 6, 7, 11         |
 | R8 (hidden memory consumption — contract only) | Contract handoff |
-| R9 (evaluation UI states) | 12 |
-| R10 (evaluation card rendering) | 12 |
-| R11 (transcript display) | 13 |
-| R12 (thread evaluation card) | 14 |
-| R13 (abort handling on unmount) | 10, 11 |
-| R14 (smoke coverage) | 5, 8 |
+| R9 (evaluation UI states)                      | 12               |
+| R10 (evaluation card rendering)                | 12               |
+| R11 (transcript display)                       | 13               |
+| R12 (thread evaluation card)                   | 14               |
+| R13 (abort handling on unmount)                | 10, 11           |
+| R14 (smoke coverage)                           | 5, 8             |

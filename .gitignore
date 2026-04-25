@@ -44,3 +44,7 @@ next-env.d.ts
 uploads/
 
 .codex
+.playwright-mcp/
+*.png
+visual-audit.md
+final-report.md

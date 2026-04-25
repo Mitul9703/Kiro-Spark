@@ -573,19 +573,54 @@ export function AppProvider({ children }) {
 
   const runResourceJob = useCallback(
     async (session) => {
-      // Placeholder — resources not yet implemented
-      patchSession(session.agentSlug, session.id, (currentSession) => ({
-        ...currentSession,
-        resources: {
-          ...currentSession.resources,
-          status: "completed",
-          completedAt: new Date().toISOString(),
-          topics: [],
-          error: "",
-        },
+      const jobKey = `${session.agentSlug}:${session.id}`;
+      if (resourceJobsRef.current.has(jobKey)) return;
+
+      const briefs = session.resources?.briefs || [];
+      if (!briefs.length) {
+        patchSession(session.agentSlug, session.id, (cur) => ({
+          ...cur,
+          resources: { ...cur.resources, status: "completed", completedAt: new Date().toISOString(), error: "" },
+        }));
+        return;
+      }
+
+      const abortController = new AbortController();
+      resourceJobsRef.current.set(jobKey, abortController);
+
+      patchSession(session.agentSlug, session.id, (cur) => ({
+        ...cur,
+        resources: { ...cur.resources, status: "processing", startedAt: cur.resources?.startedAt || new Date().toISOString(), error: "" },
       }));
+
+      try {
+        const response = await fetch(getApiUrl("/api/session-resources"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ agentSlug: session.agentSlug, sessionId: session.id, resourceBriefs: briefs }),
+          signal: abortController.signal,
+        });
+
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "Failed to fetch resources.");
+
+        patchSession(session.agentSlug, session.id, (cur) => ({
+          ...cur,
+          resources: { ...cur.resources, status: "completed", completedAt: new Date().toISOString(), topics: payload.topics || [], error: "" },
+        }));
+
+        pushToast(`${session.agentName || "Session"} resources are ready.`);
+      } catch (error) {
+        if (abortController.signal.aborted) return;
+        patchSession(session.agentSlug, session.id, (cur) => ({
+          ...cur,
+          resources: { ...cur.resources, status: "failed", failedAt: new Date().toISOString(), error: error.message || "Resource search failed." },
+        }));
+      } finally {
+        resourceJobsRef.current.delete(jobKey);
+      }
     },
-    [patchSession],
+    [patchSession, pushToast],
   );
 
   const runThreadEvaluationJob = useCallback(
@@ -617,41 +652,70 @@ export function AppProvider({ children }) {
 
   const runEvaluationJob = useCallback(
     async (session) => {
-      // Placeholder — immediately mark as completed with stub result
-      // Real Gemini evaluation will be wired in a later iteration
-      const agent = AGENTS.find((a) => a.slug === session.agentSlug);
-      const stubMetrics = (agent?.evaluationCriteria || []).map((c) => ({
-        label: c.label,
-        value: 0,
-        justification: "Evaluation not yet implemented.",
+      const jobKey = `${session.agentSlug}:${session.id}`;
+      if (evaluationJobsRef.current.has(jobKey)) return;
+
+      const abortController = new AbortController();
+      evaluationJobsRef.current.set(jobKey, abortController);
+
+      patchSession(session.agentSlug, session.id, (cur) => ({
+        ...cur,
+        evaluation: { ...cur.evaluation, status: "processing", startedAt: cur.evaluation?.startedAt || cur.endedAt || new Date().toISOString(), error: "" },
       }));
 
-      patchSession(session.agentSlug, session.id, (currentSession) => ({
-        ...currentSession,
-        evaluation: {
-          status: "completed",
-          startedAt: new Date().toISOString(),
-          completedAt: new Date().toISOString(),
-          result: {
-            score: 0,
-            summary: "Evaluation not yet implemented. This will be available in a future update.",
-            metrics: stubMetrics,
-            strengths: [],
-            improvements: [],
-            recommendations: [],
-            resourceBriefs: [],
+      try {
+        const response = await fetch(getApiUrl("/api/evaluate-session"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agentSlug: session.agentSlug,
+            sessionId: session.id,
+            startedAt: session.startedAt,
+            endedAt: session.endedAt,
+            durationLabel: session.durationLabel,
+            transcript: session.transcript || [],
+            upload: session.upload || null,
+            coding: session.coding || null,
+            customContext: session.customContext || "",
+          }),
+          signal: abortController.signal,
+        });
+
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "Failed to evaluate session.");
+
+        const derivedBriefs = deriveResourceBriefs(session.agentSlug, payload.evaluation);
+
+        patchSession(session.agentSlug, session.id, (cur) => ({
+          ...cur,
+          evaluation: {
+            status: "completed",
+            startedAt: cur.evaluation?.startedAt || session.evaluation?.startedAt || new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+            result: payload.evaluation,
+            error: "",
           },
-          error: "",
-        },
-        resources: {
-          status: "completed",
-          startedAt: "",
-          completedAt: new Date().toISOString(),
-          briefs: [],
-          topics: [],
-          error: "",
-        },
-      }));
+          resources: {
+            status: derivedBriefs.length ? "idle" : "completed",
+            startedAt: "",
+            completedAt: derivedBriefs.length ? "" : new Date().toISOString(),
+            briefs: derivedBriefs,
+            topics: [],
+            error: "",
+          },
+        }));
+
+        pushToast(`${session.agentName || "Session"} evaluation is ready.`);
+      } catch (error) {
+        if (abortController.signal.aborted) return;
+        patchSession(session.agentSlug, session.id, (cur) => ({
+          ...cur,
+          evaluation: { ...cur.evaluation, status: "failed", failedAt: new Date().toISOString(), error: error.message || "Evaluation failed." },
+        }));
+        pushToast(`${session.agentName || "Session"} evaluation could not be completed.`);
+      } finally {
+        evaluationJobsRef.current.delete(jobKey);
+      }
     },
     [patchSession, pushToast, runResourceJob],
   );

@@ -4,7 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import next from "next";
 import { WebSocketServer } from "ws";
-import { GoogleGenAI, Modality } from "@google/genai";
+import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { AssemblyAI } from "assemblyai";
 import { AGENT_LOOKUP } from "./lib/agents.js";
 
@@ -73,6 +73,260 @@ function pickRandomAnamProfile() {
   const profile = pickRandomItem(ANAM_AVATAR_PROFILES) || ANAM_AVATAR_PROFILES[0];
   const voicePool = GEMINI_VOICE_BY_GENDER[profile.gender] || GEMINI_VOICE_BY_GENDER.Female;
   return { ...profile, voiceName: pickRandomItem(voicePool) || "Aoede" };
+}
+
+// ─── Gemini response schemas ──────────────────────────────────────────────────
+
+const evaluationResponseSchema = {
+  type: Type.OBJECT,
+  required: ["score", "summary", "metrics", "strengths", "improvements", "recommendations", "resourceBriefs"],
+  properties: {
+    score: { type: Type.INTEGER, description: "Overall evaluation score from 0 to 100." },
+    summary: { type: Type.STRING, description: "A concise overall summary of the session." },
+    metrics: {
+      type: Type.ARRAY, description: "Rubric metrics for this agent.",
+      items: {
+        type: Type.OBJECT, required: ["label", "score", "justification"],
+        properties: { label: { type: Type.STRING }, score: { type: Type.INTEGER }, justification: { type: Type.STRING } },
+      },
+    },
+    strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+    improvements: { type: Type.ARRAY, items: { type: Type.STRING } },
+    recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
+    resourceBriefs: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT, required: ["topic", "improvement", "whyThisMatters", "searchPhrases", "resourceTypes"],
+        properties: {
+          topic: { type: Type.STRING }, improvement: { type: Type.STRING }, whyThisMatters: { type: Type.STRING },
+          searchPhrases: { type: Type.ARRAY, items: { type: Type.STRING } },
+          resourceTypes: { type: Type.ARRAY, items: { type: Type.STRING } },
+        },
+      },
+    },
+  },
+};
+
+const tinyFishArticlesSchema = {
+  type: Type.OBJECT, required: ["resources"],
+  properties: {
+    resources: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT, required: ["title", "url", "type", "source", "reason_relevant"],
+        properties: {
+          title: { type: Type.STRING }, url: { type: Type.STRING }, type: { type: Type.STRING },
+          source: { type: Type.STRING }, reason_relevant: { type: Type.STRING },
+        },
+      },
+    },
+  },
+};
+
+// ─── Transcript / evaluation helpers ──────────────────────────────────────────
+
+function normalizeTranscriptRole(role) {
+  if (!role) return "User";
+  if (role === "You") return "User";
+  return role;
+}
+
+function buildTranscriptText(transcript) {
+  return (transcript || [])
+    .map((entry) => {
+      const role = normalizeTranscriptRole(entry.role);
+      const text = (entry.text || "").trim();
+      if (!text) return null;
+      return `${role}: ${text}`;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildCodingContext(coding) {
+  if (!coding) return "";
+  const question = coding.interviewQuestion?.markdown
+    ? `Prepared interview question:\n${coding.interviewQuestion.markdown}`.trim()
+    : "";
+  return `
+Coding session context:
+Selected language: ${coding.language || "Unspecified"}
+${coding.companyUrl ? `Target company URL: ${coding.companyUrl}\n` : ""}
+${question ? `${question}\n\n` : ""}
+Latest candidate code:
+${coding.finalCode?.trim() || "No code was saved."}
+  `.trim();
+}
+
+function normalizeEvaluationResult(agent, rawResult) {
+  const criteria = agent.evaluationCriteria || [];
+  const metricsByLabel = new Map(
+    (rawResult.metrics || []).map((metric) => [metric.label, metric]),
+  );
+  const metrics = criteria.map((criterion) => {
+    const metric = metricsByLabel.get(criterion.label);
+    return {
+      label: criterion.label,
+      value: Math.max(0, Math.min(100, Number(metric?.score || 0))),
+      justification: (metric?.justification || "").trim(),
+    };
+  });
+  return {
+    score: Math.max(0, Math.min(100, Number(rawResult.score || 0))),
+    summary: (rawResult.summary || "").trim(),
+    metrics,
+    strengths: Array.isArray(rawResult.strengths) ? rawResult.strengths.filter(Boolean).slice(0, 4) : [],
+    improvements: Array.isArray(rawResult.improvements) ? rawResult.improvements.filter(Boolean).slice(0, 4) : [],
+    recommendations: Array.isArray(rawResult.recommendations) ? rawResult.recommendations.filter(Boolean).slice(0, 4) : [],
+    resourceBriefs: Array.isArray(rawResult.resourceBriefs)
+      ? rawResult.resourceBriefs
+          .map((brief, index) => ({
+            id: brief.id || `brief-${index + 1}`,
+            topic: (brief.topic || "").trim(),
+            improvement: (brief.improvement || "").trim(),
+            whyThisMatters: (brief.whyThisMatters || "").trim(),
+            searchPhrases: Array.isArray(brief.searchPhrases) ? brief.searchPhrases.filter(Boolean).slice(0, 3) : [],
+            resourceTypes: Array.isArray(brief.resourceTypes) ? brief.resourceTypes.filter(Boolean).slice(0, 3) : [],
+          }))
+          .filter((brief) => brief.topic && brief.improvement)
+          .slice(0, 2)
+      : [],
+  };
+}
+
+// ─── Firecrawl helpers ────────────────────────────────────────────────────────
+
+function domainFromUrl(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ""); }
+  catch (_) { return ""; }
+}
+
+async function searchFirecrawl(query, { limit = 6 } = {}) {
+  const response = await fetch("https://api.firecrawl.dev/v1/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.FIRECRAWL_API_KEY}` },
+    body: JSON.stringify({ query, limit, location: "United States", timeout: 30000, ignoreInvalidURLs: true, scrapeOptions: { formats: ["markdown"], onlyMainContent: true } }),
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    console.error("[firecrawl-search] failed", { status: response.status, payload });
+    throw new Error(payload?.message || payload?.error || "Firecrawl search failed.");
+  }
+  return Array.isArray(payload?.data) ? payload.data : [];
+}
+
+async function scrapeWithFirecrawl(url) {
+  const response = await fetch("https://api.firecrawl.dev/v2/scrape", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.FIRECRAWL_API_KEY}` },
+    body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true, timeout: 30000, blockAds: true, proxy: "auto" }),
+  });
+  const payload = await response.json();
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || payload?.message || "Firecrawl scrape failed.");
+  }
+  return payload?.data || null;
+}
+
+function normalizeFirecrawlCandidates(results, fallbackType) {
+  return (results || [])
+    .map((item) => ({
+      title: (item.title || "").trim(),
+      url: (item.url || "").trim(),
+      source: domainFromUrl(item.url || ""),
+      snippet: (item.description || "").trim(),
+      scrapedSummary: (item.markdown || "").slice(0, 1800),
+      type: fallbackType,
+    }))
+    .filter((item) => item.title && item.url);
+}
+
+async function curateResourceCandidates(brief, candidates) {
+  const ai = new GoogleGenAI({ apiKey: getGeminiApiKey("resources") });
+  const prompt = `
+Topic: ${brief.topic}
+Improvement area: ${brief.improvement}
+Why it matters: ${brief.whyThisMatters}
+
+Candidate resources:
+${candidates.map((c, i) => `
+Candidate ${i + 1}
+- title: ${c.title}
+- url: ${c.url}
+- source: ${c.source}
+- type: ${c.type}
+- search snippet: ${c.snippet || "None"}
+- scraped summary: ${(c.scrapedSummary || "").slice(0, 1200) || "None"}
+`).join("\n")}
+
+Return exactly up to 4 resources in JSON.
+Prefer practical, educational, high-signal links.
+Avoid duplicates, spammy pages, and weak matches.
+Reason relevance specifically for this improvement area.
+Use type values like youtube, article, website, or leetcode.
+  `.trim();
+
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: prompt,
+    config: {
+      systemInstruction: "You curate improvement resources for a practice app. Select the strongest links from the provided candidates only. Never invent URLs. Prefer practical, credible, and directly relevant resources.",
+      responseMimeType: "application/json",
+      responseSchema: tinyFishArticlesSchema,
+    },
+  });
+
+  const parsed = JSON.parse((response.text || "").trim());
+  const resources = Array.isArray(parsed?.resources) ? parsed.resources : [];
+  return resources
+    .map((r) => ({ title: (r.title || "").trim(), url: (r.url || "").trim(), type: (r.type || "").trim(), source: (r.source || "").trim(), reason: (r.reason_relevant || "").trim() }))
+    .filter((r) => r.title && r.url);
+}
+
+async function fetchResourcesForBrief(brief) {
+  const phrases = (brief.searchPhrases || []).filter(Boolean);
+  const primaryPhrase = phrases[0] || brief.topic || brief.improvement;
+  const secondaryPhrase = phrases[1] || brief.improvement || brief.topic;
+  const isCoding = brief.agentSlug === "coding";
+
+  const videoQuery = isCoding
+    ? `${primaryPhrase} site:youtube.com coding interview OR neetcode OR leetcode`
+    : `${primaryPhrase} site:youtube.com`;
+  const articleQuery = isCoding
+    ? `${secondaryPhrase} site:leetcode.com OR site:neetcode.io OR site:geeksforgeeks.org`
+    : `${secondaryPhrase}`;
+
+  const [videoResults, articleResults] = await Promise.all([
+    searchFirecrawl(videoQuery, { limit: 5 }),
+    searchFirecrawl(articleQuery, { limit: 6 }),
+  ]);
+
+  const rawCandidates = [
+    ...normalizeFirecrawlCandidates(videoResults, "youtube"),
+    ...normalizeFirecrawlCandidates(articleResults, isCoding ? "website" : "article"),
+  ];
+
+  const deduped = [];
+  const seen = new Set();
+  for (const candidate of rawCandidates) {
+    if (seen.has(candidate.url)) continue;
+    seen.add(candidate.url);
+    deduped.push(candidate);
+    if (deduped.length >= 6) break;
+  }
+
+  const enriched = await Promise.all(
+    deduped.map(async (candidate) => {
+      if (candidate.scrapedSummary) return candidate;
+      try {
+        const scraped = await scrapeWithFirecrawl(candidate.url);
+        return { ...candidate, source: candidate.source || scraped?.metadata?.title || domainFromUrl(candidate.url), scrapedSummary: (scraped?.markdown || "").slice(0, 1800) };
+      } catch (_) { return candidate; }
+    }),
+  );
+
+  const curated = await curateResourceCandidates(brief, enriched);
+  return curated.slice(0, 4);
 }
 
 // ─── WebSocket live bridge ────────────────────────────────────────────────────
@@ -477,24 +731,112 @@ async function startServer() {
     return res.json({ ok: true, research: null, message: "External research not yet implemented." });
   });
 
-  // Stub: session evaluation (placeholder for next iteration)
+  // Session evaluation — calls Gemini with structured JSON schema
   app.post("/api/evaluate-session", async (req, res) => {
-    return res.json({ ok: true, evaluation: null, message: "Session evaluation not yet implemented." });
+    try {
+      const { agentSlug, transcript, upload, coding, customContext, durationLabel, startedAt, endedAt } = req.body || {};
+      const agent = AGENT_LOOKUP[agentSlug] || AGENT_LOOKUP.recruiter;
+      const transcriptText = buildTranscriptText(transcript);
+
+      if (!transcriptText) {
+        return res.status(400).json({ error: "A completed transcript is required for evaluation." });
+      }
+
+      const criteriaBlock = (agent.evaluationCriteria || [])
+        .map((c, i) => `${i + 1}. ${c.label}: ${c.description}`)
+        .join("\n");
+
+      const uploadContext = upload?.contextText?.trim() || "No uploaded file context was provided for this session.";
+      const codingContext = buildCodingContext(coding);
+      const userContext = customContext?.trim() || "No additional text context was provided for this session.";
+
+      const ai = new GoogleGenAI({ apiKey: getGeminiApiKey("evaluation") });
+
+      const evaluationPrompt = `
+Agent: ${agent.name}
+Scenario: ${agent.scenario}
+Session duration: ${durationLabel || "Unknown"}
+Started at: ${startedAt || "Unknown"}
+Ended at: ${endedAt || "Unknown"}
+
+Rubric dimensions:
+${criteriaBlock}
+
+Instructions:
+- Return scores only for the rubric dimensions listed above.
+- Use a 0 to 100 integer score for every metric and for the overall score.
+- Be specific and fair.
+- Ground every metric justification in actual transcript evidence.
+- Treat uploaded document context as supporting background only when it is relevant.
+- Do not invent transcript details, file details, or performance claims.
+- Strengths, improvements, and recommendations should be concise, concrete, and non-redundant.
+- Keep the feedback human and useful, not robotic.
+- Return up to 2 resource briefs for the most important improvement areas.
+- Each resource brief should be distinct and should help a later web-search tool find concrete learning resources.
+- Use the saved code when it is relevant, but do not pretend the code was executed.
+
+Uploaded file context:
+${uploadContext}
+
+Additional user-provided context:
+${userContext}
+
+${codingContext ? `${codingContext}\n\n` : ""}Complete labeled transcript:
+${transcriptText}
+      `.trim();
+
+      const evaluationResponse = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: evaluationPrompt,
+        config: {
+          systemInstruction: agent.evaluationPrompt,
+          responseMimeType: "application/json",
+          responseSchema: evaluationResponseSchema,
+        },
+      });
+
+      const parsed = JSON.parse((evaluationResponse.text || "").trim());
+      const evaluation = normalizeEvaluationResult(agent, parsed);
+
+      return res.json({ ok: true, evaluation });
+    } catch (error) {
+      console.error("Session evaluation error:", error);
+      return res.status(500).json({ error: "Failed to evaluate session.", details: error.message });
+    }
   });
 
-  // Stub: thread evaluation (placeholder for next iteration)
-  app.post("/api/evaluate-thread", async (req, res) => {
-    return res.json({ ok: true, threadEvaluation: null, message: "Thread evaluation not yet implemented." });
-  });
-
-  // Stub: session comparison (placeholder for next iteration)
-  app.post("/api/compare-sessions", async (req, res) => {
-    return res.json({ ok: true, comparison: null, message: "Session comparison not yet implemented." });
-  });
-
-  // Stub: improvement resources (placeholder for next iteration)
+  // Improvement resources — Firecrawl search + Gemini curation
   app.post("/api/session-resources", async (req, res) => {
-    return res.json({ ok: true, topics: [], message: "Resources not yet implemented." });
+    try {
+      if (!process.env.FIRECRAWL_API_KEY) {
+        return res.status(400).json({ error: "Firecrawl API key must be configured." });
+      }
+
+      const { resourceBriefs, agentSlug } = req.body || {};
+      const briefs = Array.isArray(resourceBriefs) ? resourceBriefs.slice(0, 2) : [];
+
+      if (!briefs.length) {
+        return res.json({ ok: true, topics: [] });
+      }
+
+      const topics = await Promise.all(
+        briefs.map(async (brief, index) => {
+          const items = await fetchResourcesForBrief({ ...brief, agentSlug });
+          return {
+            id: brief.id || `topic-${index + 1}`,
+            topic: brief.topic,
+            improvement: brief.improvement,
+            whyThisMatters: brief.whyThisMatters,
+            items: items.slice(0, 4),
+          };
+        }),
+      );
+
+      return res.json({ ok: true, topics });
+    } catch (error) {
+      console.error("Resource search error:", error);
+      return res.status(500).json({ error: "Failed to fetch improvement resources.", details: error.message });
+    }
   });
 
   // Stub: PDF upload (placeholder for next iteration)

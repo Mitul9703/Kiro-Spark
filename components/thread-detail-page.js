@@ -50,7 +50,7 @@ function CollapsibleSection({ title, defaultOpen = false, children, action = nul
   );
 }
 
-const RESEARCH_SLUGS = ["coding", "investor", "custom", "recruiter"];
+const RESEARCH_SLUGS = ["coding", "investor", "investor-panel", "custom", "recruiter"];
 
 export function ThreadDetailPage({ slug, threadId }) {
   const router = useRouter();

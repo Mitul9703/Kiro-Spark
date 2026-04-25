@@ -142,6 +142,8 @@ export function SessionPage({ slug }) {
   const upload = agentState?.upload;
   const isCodingAgent = slug === "coding";
   const canScreenShare = slug !== "coding";
+  const isPanelMode = Boolean(agent?.panelMode && agent?.panelPersonas?.length);
+  const panelPersonas = agent?.panelPersonas || [];
   const codingLanguages = agent?.codingLanguages || ["JavaScript", "Pseudocode"];
   const customContextText = agentState?.customContextText || "";
   const companyUrl = agentState?.companyUrl || "";
@@ -166,6 +168,8 @@ export function SessionPage({ slug }) {
     surface: "screen",
     error: "",
   });
+  const [activePanelSpeaker, setActivePanelSpeaker] = useState(null);
+  const activePanelSpeakerRef = useRef(null);
   const codeExtensions = useMemo(() => getCodingLanguageExtensions(codeLanguage), [codeLanguage]);
 
   const videoRef = useRef(null);
@@ -194,6 +198,10 @@ export function SessionPage({ slug }) {
   const lastSentCodeRef = useRef("");
   const anamAudioStreamRef = useRef(null);
   const mutedStateRef = useRef(false);
+  // Panel mode: multiple Anam clients
+  const panelVideoRefs = useRef({});
+  const panelAnamClientsRef = useRef({});
+  const panelAudioStreamsRef = useRef({});
   const transcriptEntries = useMemo(
     () => [
       ...transcript,
@@ -845,9 +853,40 @@ export function SessionPage({ slug }) {
         return;
       }
 
+      // panel_speaker — server tells us who's about to speak (arrives before audio)
+      if (message.type === "panel_speaker" && isPanelMode) {
+        const persona = panelPersonas.find((p) => p.id === message.personaId);
+        if (persona) {
+          setActivePanelSpeaker(persona.id);
+          activePanelSpeakerRef.current = persona.id;
+        }
+        return;
+      }
+
       if (message.type === "model_text") {
+        let text = message.text || "";
+        let displayText = text;
+        // In panel mode, detect active speaker from [PersonaName] prefix
+        if (isPanelMode) {
+          const match = text.match(/^\[([^\]]+)\]\s*/);
+          if (match) {
+            const speakerName = match[1];
+            const persona = panelPersonas.find((p) => p.name === speakerName);
+            if (persona) {
+              setActivePanelSpeaker(persona.id);
+              activePanelSpeakerRef.current = persona.id;
+            }
+            // Strip [Name] prefix from display only
+            displayText = text.slice(match[0].length);
+          }
+          // Strip turn control tags from display only
+          displayText = displayText.replace(/\[PASS\]/gi, "").replace(/\[FOLLOW-UP:[^\]]*\]/gi, "").replace(/\[PAUSE\]/gi, "");
+        }
+        // Always update the buffer (even if displayText is empty — keeps accumulation working)
+        const cleanText = (displayText || "").trim();
+        if (!cleanText) return;
         setModelBuffer((current) => {
-          const next = mergeTranscriptChunk(current, message.text || "");
+          const next = mergeTranscriptChunk(current, cleanText);
           modelBufferRef.current = next;
           return next;
         });
@@ -859,24 +898,44 @@ export function SessionPage({ slug }) {
         setUserBuffer(nextText);
         userBufferRef.current = nextText;
 
-        if (message.finished) finalizeUserBuffer();
+        if (message.finished) {
+          finalizeUserBuffer();
+          // Reset active speaker when founder speaks
+          if (isPanelMode) { setActivePanelSpeaker(null); activePanelSpeakerRef.current = null; }
+        }
         return;
       }
 
-      if (message.type === "audio_chunk" && anamAudioStreamRef.current) {
+      if (message.type === "audio_chunk") {
         const pcm24kBytes = base64ToUint8Array(message.data);
         const pcm24kInt16 = pcmBytesToInt16Array(pcm24kBytes);
         const pcm16kInt16 = downsampleInt16(pcm24kInt16, 24000, 16000);
-        anamAudioStreamRef.current.sendAudioChunk(new Uint8Array(pcm16kInt16.buffer));
+        const audioData = new Uint8Array(pcm16kInt16.buffer);
+
+        if (isPanelMode) {
+          // Route audio to the active speaker's Anam stream using ref (not stale state)
+          const currentSpeaker = activePanelSpeakerRef.current;
+          const activeStream = currentSpeaker ? panelAudioStreamsRef.current[currentSpeaker] : null;
+          if (activeStream) {
+            activeStream.sendAudioChunk(audioData);
+          }
+        } else if (anamAudioStreamRef.current) {
+          anamAudioStreamRef.current.sendAudioChunk(audioData);
+        }
         return;
       }
 
       if (message.type === "turn_complete") {
         const finalText = modelBufferRef.current.trim();
-        if (anamAudioStreamRef.current) {
-          try {
-            anamAudioStreamRef.current.endSequence();
-          } catch (error) {
+        if (isPanelMode) {
+          const activeStream = panelAudioStreamsRef.current[activePanelSpeakerRef.current];
+          if (activeStream) {
+            try { activeStream.endSequence(); } catch (_) {}
+          }
+          setActivePanelSpeaker(null);
+          activePanelSpeakerRef.current = null;
+        } else if (anamAudioStreamRef.current) {
+          try { anamAudioStreamRef.current.endSequence(); } catch (error) {
             console.error("Anam audio sequence end error:", error);
           }
         }
@@ -959,7 +1018,59 @@ export function SessionPage({ slug }) {
         session: { ...current.session, status: "active" },
       }));
 
-      if (videoRef.current) {
+      if (isPanelMode) {
+        // Panel mode: create 3 separate Anam sessions
+        setStatusText("Connecting panel avatars...");
+        for (let i = 0; i < panelPersonas.length; i++) {
+          const persona = panelPersonas[i];
+          try {
+            const panelTokenRes = await fetch(getApiUrl("/api/anam-session-token"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                agentSlug: slug,
+                keyIndex: i,
+                avatarId: persona.avatarId,
+                avatarName: persona.name,
+              }),
+            });
+            const panelTokenPayload = await panelTokenRes.json();
+            if (!panelTokenRes.ok || !panelTokenPayload?.sessionToken) {
+              console.warn(`Failed to get Anam token for ${persona.name}`);
+              continue;
+            }
+
+            const panelClient = createClient(panelTokenPayload.sessionToken, {
+              disableInputAudio: true,
+            });
+
+            panelClient.addListener(AnamEvent.VIDEO_PLAY_STARTED, () => {
+              console.log(`[panel] ${persona.name} avatar video started`);
+            });
+
+            panelClient.addListener(AnamEvent.CONNECTION_CLOSED, (_reason, details) => {
+              if (endedRef.current) return;
+              console.warn(`[panel] ${persona.name} avatar closed:`, details);
+            });
+
+            panelAnamClientsRef.current[persona.id] = panelClient;
+
+            const videoElementId = `anam-panel-${persona.id}`;
+            await panelClient.streamToVideoElement(videoElementId);
+
+            panelAudioStreamsRef.current[persona.id] = panelClient.createAgentAudioInputStream({
+              encoding: "pcm_s16le",
+              sampleRate: 16000,
+              channels: 1,
+            });
+
+            console.log(`[panel] ${persona.name} avatar connected`);
+          } catch (anamError) {
+            console.warn(`Anam avatar failed for ${persona.name}:`, anamError.message);
+          }
+        }
+        setStatusText("Panel session is live.");
+      } else if (videoRef.current) {
         try {
           const anamClient = createClient(tokenPayload.sessionToken, {
             disableInputAudio: true,
@@ -1068,6 +1179,13 @@ export function SessionPage({ slug }) {
         anamClientRef.current = null;
       }
       anamAudioStreamRef.current = null;
+
+      // Clean up panel Anam clients
+      for (const [id, client] of Object.entries(panelAnamClientsRef.current)) {
+        try { await client.stopStreaming(); } catch (_) {}
+      }
+      panelAnamClientsRef.current = {};
+      panelAudioStreamsRef.current = {};
       setModelBuffer("");
       modelBufferRef.current = "";
       setUserBuffer("");
@@ -1255,15 +1373,58 @@ export function SessionPage({ slug }) {
                     : "bg-muted-foreground",
                 )}
               />
-              {sessionPhase === "live" ? "Live rehearsal" : "Preparing room"}
+              {sessionPhase === "live"
+                ? isPanelMode
+                  ? "Live panel"
+                  : "Live rehearsal"
+                : isPanelMode
+                  ? "Preparing panel"
+                  : "Preparing room"}
             </div>
-            <video
-              id="anam-video-stage"
-              ref={videoRef}
-              className="h-full w-full bg-black object-cover"
-              autoPlay
-              playsInline
-            />
+            {isPanelMode ? (
+              <div className="grid h-full flex-1 grid-cols-1 gap-2 p-2 pt-12 sm:grid-cols-2 lg:grid-cols-3">
+                {panelPersonas.map((persona) => (
+                  <div
+                    key={persona.id}
+                    className={cn(
+                      "relative flex flex-col overflow-hidden rounded-lg border-2 bg-black transition-all",
+                      activePanelSpeaker === persona.id
+                        ? "border-[color:var(--success)] shadow-[0_0_0_3px_rgba(52,168,83,0.25)]"
+                        : "border-transparent",
+                    )}
+                  >
+                    <video
+                      id={`anam-panel-${persona.id}`}
+                      className="min-h-0 w-full flex-1 object-cover"
+                      autoPlay
+                      playsInline
+                    />
+                    <div className="flex items-center gap-2 bg-black/60 px-3 py-2 text-xs font-semibold text-white backdrop-blur">
+                      <span
+                        className={cn(
+                          "size-2 rounded-full transition-all",
+                          activePanelSpeaker === persona.id
+                            ? "animate-pulse bg-[color:var(--success)]"
+                            : "bg-muted-foreground",
+                        )}
+                      />
+                      <span>{persona.name}</span>
+                      {persona.role ? (
+                        <span className="ml-1 text-[0.7rem] opacity-60">({persona.role})</span>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <video
+                id="anam-video-stage"
+                ref={videoRef}
+                className="h-full w-full bg-black object-cover"
+                autoPlay
+                playsInline
+              />
+            )}
 
             {(sessionPhase === "preflight" || sessionPhase === "connecting") && (
               <div className="bg-background/80 absolute inset-0 z-20 grid place-items-center backdrop-blur">

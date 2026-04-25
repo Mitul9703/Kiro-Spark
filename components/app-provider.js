@@ -880,6 +880,40 @@ export function AppProvider({ children }) {
     [runComparisonJob, state.sessions],
   );
 
+  const retryEvaluation = useCallback(
+    (agentSlug, sessionId) => {
+      patchSession(agentSlug, sessionId, (cur) => ({
+        ...cur,
+        evaluation: {
+          status: "idle",
+          result: null,
+          error: null,
+          startedAt: null,
+          completedAt: null,
+          failedAt: null,
+        },
+      }));
+    },
+    [patchSession],
+  );
+
+  const retryThreadEvaluation = useCallback(
+    (agentSlug, threadId) => {
+      patchThread(agentSlug, threadId, (currentThread) => ({
+        ...currentThread,
+        evaluation: {
+          status: "idle",
+          result: null,
+          error: null,
+          startedAt: null,
+          completedAt: null,
+          failedAt: null,
+        },
+      }));
+    },
+    [patchThread],
+  );
+
   useEffect(() => {
     if (!mounted) return;
     window.localStorage.setItem(
@@ -1015,6 +1049,8 @@ export function AppProvider({ children }) {
       deleteSession,
       runThreadEvaluationJob,
       applyThreadMemory,
+      retryEvaluation,
+      retryThreadEvaluation,
       dismissToast,
       toasts,
     }),
@@ -1036,6 +1072,8 @@ export function AppProvider({ children }) {
       deleteSession,
       runThreadEvaluationJob,
       applyThreadMemory,
+      retryEvaluation,
+      retryThreadEvaluation,
       toasts,
     ],
   );

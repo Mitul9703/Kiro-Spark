@@ -11,6 +11,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a first-time visitor, I want a landing page that explains Spark in seconds, so that I decide whether to continue.
 
 **Acceptance Criteria:**
+
 1. WHEN the user navigates to `/` THEN the system SHALL render the `LandingPage` component inside the shell.
 2. WHEN the landing page mounts THEN the system SHALL display a hero section with the product name "Spark", a one-sentence tagline, and a primary call-to-action button labeled "View agents".
 3. WHEN the landing page mounts THEN the system SHALL display a three-step flow section with cards labeled "Prep", "Rehearse", and "Review" in that order, each with a short description.
@@ -25,6 +26,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a user, I want to browse every available agent, so that I can pick the one that matches my upcoming event.
 
 **Acceptance Criteria:**
+
 1. WHEN the user navigates to `/agents` THEN the system SHALL render a grid of exactly five cards, one per agent defined in `data/agents.json`.
 2. WHEN a card renders THEN the system SHALL display the agent `name`, `role`, `duration`, and `description`.
 3. WHEN the user clicks anywhere on a card THEN the system SHALL navigate to `/agents/<slug>`.
@@ -38,6 +40,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a user, I want to read the agent's scenario and evaluation criteria, so that I know what I am about to be tested on.
 
 **Acceptance Criteria:**
+
 1. WHEN the user navigates to `/agents/<slug>` for a known slug THEN the system SHALL render the `AgentDetailPage` with the agent's `name`, `longDescription`, and `scenario`.
 2. WHEN the agent detail page mounts THEN the system SHALL render the `evaluationCriteria` list with each item's label and description.
 3. WHEN the `evaluationCriteria` list has more than three items THEN the system SHALL collapse items beyond the third behind a "Show more" expander.
@@ -51,6 +54,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a user, I want to create named threads under an agent, so that I can group multiple rehearsal sessions toward one goal.
 
 **Acceptance Criteria:**
+
 1. WHEN the user types a non-empty title into the thread-creation input and clicks "Create thread" THEN the system SHALL call `createThread(slug, title)` and append the new thread to `state.threads[slug]`.
 2. IF the thread title is empty or whitespace-only THEN the system SHALL disable the "Create thread" button.
 3. WHEN a thread is created THEN the system SHALL generate an ID of the form `thread-<timestamp>-<random8hex>`, set `createdAt`/`updatedAt` to the current ISO time, and initialize `sessionIds` to an empty array.
@@ -65,6 +69,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a user, I want a pre-session form inside a thread, so that I can set context and start a new session.
 
 **Acceptance Criteria:**
+
 1. WHEN the user navigates to `/agents/<slug>/threads/<threadId>` for a known thread THEN the system SHALL render the `ThreadDetailPage` with the thread title, the session-name input (required), the optional company-URL input, the optional custom-context textarea, and a PDF upload trigger (owned by: research-and-resources).
 2. IF the session-name input is empty or whitespace-only THEN the system SHALL disable the "Start session" button.
 3. WHEN the user clicks "Start session" with a valid session name THEN the system SHALL create a session record via `createSession(slug, threadId, partial)` and navigate to `/session/<slug>?threadId=<threadId>&sessionId=<sessionId>`.
@@ -80,6 +85,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a developer consuming state from this feature, I want a single documented session record shape, so that every other spec extends the same object.
 
 **Acceptance Criteria:**
+
 1. WHEN `createSession` is called THEN the system SHALL push to `state.sessions[slug]` an object containing `id`, `agentSlug`, `threadId`, `sessionName`, `startedAt`, `endedAt`, `durationLabel`, `transcript`, `upload`, `externalResearch`, `coding`, `customContext`, `evaluation`, `resources`, and `comparison`.
 2. WHEN `createSession` initializes a record THEN `transcript` SHALL be `[]`, `endedAt`/`durationLabel` SHALL be `null`, and slices owned by other specs (`externalResearch`, `coding`, `evaluation`, `resources`, `comparison`) SHALL be `null` until those specs populate them.
 3. WHEN `createSession` returns THEN the system SHALL also append the new `sessionId` to the owning thread's `sessionIds` array and update the thread's `updatedAt`.
@@ -92,6 +98,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a developer building any page, I want one provider to read from and one set of mutators to write through, so that state stays consistent.
 
 **Acceptance Criteria:**
+
 1. WHEN any page mounts THEN it SHALL access state via `useAppState()` and mutators via `useAppActions()` from `components/app-provider.js`.
 2. WHEN a mutator is called THEN the provider SHALL produce a new top-level state object (immutable update) and schedule a debounced write to localStorage.
 3. WHEN the provider mounts THEN it SHALL expose these mutators: `setTheme`, `pushToast`, `dismissToast`, `patchAgent`, `createThread`, `deleteThread`, `patchThread`, `createSession`, `deleteSession`, `patchSession`, `appendTranscript`.
@@ -105,6 +112,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a user, I want to switch between light and dark mode, so that the app matches my environment.
 
 **Acceptance Criteria:**
+
 1. WHEN the app first mounts with no persisted state THEN the system SHALL default `theme` to `dark`.
 2. WHEN the user clicks the theme toggle in the header THEN the system SHALL call `setTheme` with the opposite value and immediately update the `data-theme` attribute on `<html>`.
 3. WHEN the theme changes THEN the system SHALL persist the new value to localStorage under the `spark-state-v1` key.
@@ -118,6 +126,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a user, I want short notifications for small events, so that I know my action registered.
 
 **Acceptance Criteria:**
+
 1. WHEN `pushToast({message, kind})` is called THEN the system SHALL append a toast with a generated ID and kind one of `info|success|error` to `state.toasts`.
 2. WHEN a toast is added THEN the shell SHALL render it in the toast host and auto-dismiss it after 4000ms.
 3. WHEN the user clicks a toast's dismiss button THEN the system SHALL call `dismissToast(id)` and remove it from state.
@@ -131,6 +140,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a user, I want the app to remember my threads and sessions between visits, so that I do not rebuild context each time.
 
 **Acceptance Criteria:**
+
 1. WHEN the provider detects a state change THEN the system SHALL debounce writes by 200ms and then write `JSON.stringify(state)` to `localStorage.setItem('spark-state-v1', ...)`.
 2. WHEN the provider mounts on the client THEN the system SHALL read `spark-state-v1`, `JSON.parse` it, and merge it into the default state.
 3. IF reading or parsing localStorage throws THEN the system SHALL catch the error, log via `console.warn`, and continue with the default state.
@@ -145,6 +155,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a user picking an agent, I want each agent to have a real scenario, a real rubric, and a real persona prompt, so that my rehearsal is believable.
 
 **Acceptance Criteria:**
+
 1. WHEN the app reads `data/agents.json` THEN the file SHALL contain exactly five entries with slugs `recruiter`, `professor`, `investor`, `coding`, `custom`.
 2. WHEN any agent entry is read THEN it SHALL include non-empty values for `name`, `role`, `duration`, `description`, `longDescription`, `scenario`, `focus`, `flow`, `previewMetrics`, `evaluationCriteria`, `systemPrompt`, `evaluationPrompt`, `mockEvaluation`, `contextFieldLabel`, `contextFieldDescription`, `screenShareTitle`, `screenShareHelperText`, `screenShareEmptyText`, and `screenShareInstruction`.
 3. WHEN the `coding` entry is read THEN it SHALL additionally include `codingLanguages` equal to `["JavaScript","Python","Java","C++","SQL","Pseudocode"]`, a non-empty `codingQuestionBank` array, and a non-empty `sessionKickoff` string.
@@ -158,6 +169,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a user, I want each URL to map to a single intent, so that links and the back button behave as expected.
 
 **Acceptance Criteria:**
+
 1. WHEN the URL is `/` THEN the system SHALL render `LandingPage`.
 2. WHEN the URL is `/agents` THEN the system SHALL render `AgentsPage`.
 3. WHEN the URL matches `/agents/[slug]` THEN the system SHALL render `AgentDetailPage` with `slug` from params.
@@ -172,6 +184,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a user, I want consistent navigation and feedback surfaces on every page, so that the product feels like one app.
 
 **Acceptance Criteria:**
+
 1. WHEN any route renders THEN the system SHALL wrap its content in the `Shell` component.
 2. WHEN the shell renders THEN it SHALL display a header with a clickable "Spark" brand that navigates to `/` and a theme toggle button.
 3. WHEN the shell renders THEN it SHALL mount a single toast host that reads from `state.toasts`.
@@ -185,6 +198,7 @@ The **agents-and-threads** feature is the foundation of Spark. It delivers the l
 **User Story:** As a developer, I want one helper for IDs and one for time formatting, so that every surface uses the same format.
 
 **Acceptance Criteria:**
+
 1. WHEN any part of the provider needs a new ID THEN it SHALL call `generateId(type)` from `lib/ids.js` which returns `${type}-${Date.now()}-${random8hex}`.
 2. WHEN the sessions history row renders a duration THEN it SHALL use `formatDuration(ms)` from `lib/format.js` which returns a string of the form `MM:SS`.
 3. WHEN a thread row renders `createdAt` THEN it SHALL use `formatDateTime(iso)` from `lib/format.js` which returns a locale-friendly string like `Apr 24, 2026 · 3:14 PM`.

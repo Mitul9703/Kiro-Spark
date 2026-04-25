@@ -38,7 +38,7 @@ Both handlers follow the same five-step flow:
 
 ### Prompt construction — session
 
-```
+````
 SYSTEM:
 You are Spark's session evaluator. Produce a rigorous, grounded evaluation of
 a rehearsal session. Output STRICT JSON matching the schema below. Do not
@@ -64,9 +64,10 @@ INTERVIEW QUESTION (coding agent only):
 FINAL CODE (coding agent only):
 ```<coding.language>
 <coding.finalCode>
-```
+````
 
 SESSION METADATA:
+
 - durationLabel: <durationLabel>
 - startedAt: <startedAt>
 - endedAt: <endedAt>
@@ -79,27 +80,28 @@ User: <turn 2 text>
 
 OUTPUT JSON SCHEMA:
 {
-  "score": <integer 0-100, weighted average of metric values>,
-  "summary": "<2-4 sentence overall narrative>",
-  "metrics": [
-    { "label": "<exact rubric label>", "value": <0-100>, "justification": "<1-2 sentences grounded in transcript>" },
-    ...one per rubric entry, in rubric order...
-  ],
-  "strengths":       ["<up to 4 short bullets>"],
-  "improvements":    ["<up to 4 short bullets>"],
-  "recommendations": ["<up to 4 concrete next steps>"],
-  "resourceBriefs": [
-    {
-      "id": "brief-<index>",
-      "topic": "<short topic tied to the weakest metric>",
-      "improvement": "<specific skill to build>",
-      "whyThisMatters": "<1-2 sentences>",
-      "searchPhrases": ["<3-5 google-style queries>"],
-      "resourceTypes": ["article","video","exercise"]
-    }
-    ...between 0 and 4 entries, derived from the TWO lowest-scoring metrics...
-  ]
+"score": <integer 0-100, weighted average of metric values>,
+"summary": "<2-4 sentence overall narrative>",
+"metrics": [
+{ "label": "<exact rubric label>", "value": <0-100>, "justification": "<1-2 sentences grounded in transcript>" },
+...one per rubric entry, in rubric order...
+],
+"strengths": ["<up to 4 short bullets>"],
+"improvements": ["<up to 4 short bullets>"],
+"recommendations": ["<up to 4 concrete next steps>"],
+"resourceBriefs": [
+{
+"id": "brief-<index>",
+"topic": "<short topic tied to the weakest metric>",
+"improvement": "<specific skill to build>",
+"whyThisMatters": "<1-2 sentences>",
+"searchPhrases": ["<3-5 google-style queries>"],
+"resourceTypes": ["article","video","exercise"]
 }
+...between 0 and 4 entries, derived from the TWO lowest-scoring metrics...
+]
+}
+
 ```
 
 ### JSON normalization — session
@@ -126,21 +128,25 @@ Every agent in `data/agents.json` carries its own `evaluationPrompt` and `evalua
 `data/agents.json["recruiter"].evaluationCriteria` (example):
 
 ```
+
 [
-  { "label": "Impact & Evidence",        "description": "Specific, quantified outcomes.",            "weight": 0.30 },
-  { "label": "Structured Storytelling",  "description": "Clear situation/task/action/result flow.",  "weight": 0.25 },
-  { "label": "Role Fit & Motivation",    "description": "Alignment with target role and company.",   "weight": 0.25 },
-  { "label": "Communication Poise",      "description": "Clarity, concision, composure.",            "weight": 0.20 }
+{ "label": "Impact & Evidence", "description": "Specific, quantified outcomes.", "weight": 0.30 },
+{ "label": "Structured Storytelling", "description": "Clear situation/task/action/result flow.", "weight": 0.25 },
+{ "label": "Role Fit & Motivation", "description": "Alignment with target role and company.", "weight": 0.25 },
+{ "label": "Communication Poise", "description": "Clarity, concision, composure.", "weight": 0.20 }
 ]
+
 ```
 
 Resulting prompt (abbrev) for a recruiter session about a Stripe loop:
 
 ```
+
 AGENT EVALUATION PROMPT:
 You are evaluating a candidate's performance in a behavioral recruiter screen...
 
 RUBRIC (evaluate in this exact order):
+
 1. Impact & Evidence — Specific, quantified outcomes. (weight: 0.30)
 2. Structured Storytelling — Clear situation/task/action/result flow. (weight: 0.25)
 3. Role Fit & Motivation — Alignment with target role and company. (weight: 0.25)
@@ -156,6 +162,7 @@ TRANSCRIPT:
 User: Hi, thanks for taking the time...
 Agent: Walk me through a time you had to make a tradeoff...
 ...
+
 ```
 
 Gemini returns JSON; the normalizer recomputes the weighted score as
@@ -186,6 +193,7 @@ Fires automatically when a session completes and `sessions[slug].filter(s => s.t
 ### Prompt construction
 
 ```
+
 SYSTEM:
 You are Spark's thread evaluator. You read N prior session evaluations from a
 single user in a single practice thread and produce a trajectory report plus
@@ -197,16 +205,15 @@ THREAD: "<thread.title>" (created <thread.createdAt>)
 
 PRIOR SESSIONS (oldest first):
 Session 1 — <session.startedAt> — overall <s.evaluation.result.score>
-  Metrics:
-    - Impact & Evidence: 62 — "vague on Q2 numbers"
-    - Structured Storytelling: 74 — ...
-    ...
-  Summary: <s.evaluation.result.summary>
+Metrics: - Impact & Evidence: 62 — "vague on Q2 numbers" - Structured Storytelling: 74 — ...
+...
+Summary: <s.evaluation.result.summary>
 Session 2 — ...
 ...
 
 TASK:
 Analyze the trajectory. Produce:
+
 - summary: a 3-5 sentence narrative covering progress.
 - trajectory: one of "improving" | "stable" | "declining".
 - comments: 2-4 observations about what's shifting.
@@ -224,15 +231,16 @@ Analyze the trajectory. Produce:
 
 OUTPUT JSON SCHEMA:
 {
-  "summary": "...",
-  "trajectory": "improving",
-  "comments": ["..."],
-  "strengths": ["..."],
-  "focusAreas": ["..."],
-  "nextSessionFocus": "...",
-  "metricTrends": [{ "label":"...", "trend":"improving", "comment":"..." }],
-  "hiddenGuidance": "..."
+"summary": "...",
+"trajectory": "improving",
+"comments": ["..."],
+"strengths": ["..."],
+"focusAreas": ["..."],
+"nextSessionFocus": "...",
+"metricTrends": [{ "label":"...", "trend":"improving", "comment":"..." }],
+"hiddenGuidance": "..."
 }
+
 ```
 
 ### Hidden guidance philosophy
@@ -250,23 +258,25 @@ OUTPUT JSON SCHEMA:
 Added to the provider owned by `agents-and-threads`:
 
 ```
+
 state.sessions[slug][i].evaluation = {
-  status: 'idle' | 'processing' | 'completed' | 'failed',
-  startedAt?: number,
-  completedAt?: number,
-  failedAt?: number,
-  result?: { score, summary, metrics, strengths, improvements, recommendations, resourceBriefs },
-  error?: string
+status: 'idle' | 'processing' | 'completed' | 'failed',
+startedAt?: number,
+completedAt?: number,
+failedAt?: number,
+result?: { score, summary, metrics, strengths, improvements, recommendations, resourceBriefs },
+error?: string
 }
 
 state.threads[slug][j].evaluation = { status, startedAt?, completedAt?, failedAt?, result?, error? }
 
 state.threads[slug][j].memory = {
-  hiddenGuidance: string,
-  summary: string,
-  focusAreas: string[],
-  updatedAt: number
+hiddenGuidance: string,
+summary: string,
+focusAreas: string[],
+updatedAt: number
 }
+
 ```
 
 ### Auto-trigger effect
@@ -274,31 +284,33 @@ state.threads[slug][j].memory = {
 Lives inside `AppProvider`. Runs on every state change but guarded by the job-map so it only fires once per session:
 
 ```
+
 useEffect(() => {
-  for (const slug of Object.keys(state.sessions)) {
-    for (const s of state.sessions[slug]) {
-      const key = `evaluation:${s.id}`;
-      const hasTranscript = Array.isArray(s.transcript) && s.transcript.length > 0;
-      if (s.evaluation?.status === 'idle' && hasTranscript && !jobs.current.has(key)) {
-        const ctrl = new AbortController();
-        jobs.current.set(key, ctrl);
-        startEvaluation(s.id);
-        fetch('/api/evaluate-session', { method:'POST', signal:ctrl.signal, body:JSON.stringify({...}), headers:{'content-type':'application/json'} })
-          .then(r => r.json())
-          .then(body => {
-            if (body.error || !body.evaluation) throw new Error(body.error || 'Missing evaluation');
-            completeEvaluation(s.id, body.evaluation);
-            maybeAutoTriggerThread(slug, s.threadId);
-          })
-          .catch(err => {
-            if (err.name === 'AbortError') return;
-            failEvaluation(s.id, err.message);
-          })
-          .finally(() => jobs.current.delete(key));
-      }
-    }
-  }
+for (const slug of Object.keys(state.sessions)) {
+for (const s of state.sessions[slug]) {
+const key = `evaluation:${s.id}`;
+const hasTranscript = Array.isArray(s.transcript) && s.transcript.length > 0;
+if (s.evaluation?.status === 'idle' && hasTranscript && !jobs.current.has(key)) {
+const ctrl = new AbortController();
+jobs.current.set(key, ctrl);
+startEvaluation(s.id);
+fetch('/api/evaluate-session', { method:'POST', signal:ctrl.signal, body:JSON.stringify({...}), headers:{'content-type':'application/json'} })
+.then(r => r.json())
+.then(body => {
+if (body.error || !body.evaluation) throw new Error(body.error || 'Missing evaluation');
+completeEvaluation(s.id, body.evaluation);
+maybeAutoTriggerThread(slug, s.threadId);
+})
+.catch(err => {
+if (err.name === 'AbortError') return;
+failEvaluation(s.id, err.message);
+})
+.finally(() => jobs.current.delete(key));
+}
+}
+}
 }, [state.sessions]);
+
 ```
 
 A twin loop handles `state.threads[slug][j].evaluation.status === 'idle'` with `key = evaluation-thread:${threadId}`.
@@ -306,18 +318,22 @@ A twin loop handles `state.threads[slug][j].evaluation.status === 'idle'` with `
 ### Abort on unmount
 
 ```
+
 useEffect(() => () => {
-  for (const ctrl of jobs.current.values()) ctrl.abort();
-  jobs.current.clear();
+for (const ctrl of jobs.current.values()) ctrl.abort();
+jobs.current.clear();
 }, []);
+
 ```
 
 ### Status state machine
 
 ```
+
 idle ──auto-trigger──▶ processing ──success──▶ completed
-                            │
-                            └──error──▶ failed ──retry button──▶ idle
+│
+└──error──▶ failed ──retry button──▶ idle
+
 ```
 
 ## 7. UI components
@@ -325,31 +341,33 @@ idle ──auto-trigger──▶ processing ──success──▶ completed
 ### `SessionDetailPage` evaluation card (wireframe)
 
 ```
+
 ┌──────────────────────────────────────────────────────────────┐
-│ [back]  Session — Recruiter Loop — 12m 34s — Apr 24, 14:03   │
+│ [back] Session — Recruiter Loop — 12m 34s — Apr 24, 14:03 │
 ├──────────────────────────────────────────────────────────────┤
-│  ┌──────────┐   Summary                                      │
-│  │   82     │   You delivered clear STAR-style stories...    │
-│  │  /100    │   (summary paragraph)                          │
-│  └──────────┘                                                │
+│ ┌──────────┐ Summary │
+│ │ 82 │ You delivered clear STAR-style stories... │
+│ │ /100 │ (summary paragraph) │
+│ └──────────┘ │
 ├──────────────────────────────────────────────────────────────┤
-│  Rubric                                                      │
-│  Impact & Evidence        ██████████░░░  78   "Strong on Q2"│
-│  Structured Storytelling  ███████████░░  84   "..."         │
-│  Role Fit & Motivation    ████████████░  86   "..."         │
-│  Communication Poise      ███████████░░  80   "..."         │
+│ Rubric │
+│ Impact & Evidence ██████████░░░ 78 "Strong on Q2"│
+│ Structured Storytelling ███████████░░ 84 "..." │
+│ Role Fit & Motivation ████████████░ 86 "..." │
+│ Communication Poise ███████████░░ 80 "..." │
 ├──────────────────────────────────────────────────────────────┤
-│  Strengths    │  Improvements  │  Recommendations            │
-│  • ...        │  • ...         │  • ...                      │
-│  • ...        │  • ...         │  • ...                      │
+│ Strengths │ Improvements │ Recommendations │
+│ • ... │ • ... │ • ... │
+│ • ... │ • ... │ • ... │
 ├──────────────────────────────────────────────────────────────┤
-│  Resource briefs                                             │
-│  [card: Quantifying impact]  [card: Handling tradeoffs]      │
+│ Resource briefs │
+│ [card: Quantifying impact] [card: Handling tradeoffs] │
 ├──────────────────────────────────────────────────────────────┤
-│  Transcript (scrollable)                                     │
-│  User:  Hi, thanks for taking...                             │
-│  Agent: Walk me through a time...                            │
+│ Transcript (scrollable) │
+│ User: Hi, thanks for taking... │
+│ Agent: Walk me through a time... │
 └──────────────────────────────────────────────────────────────┘
+
 ```
 
 Processing state swaps the score card for a centered spinner + "Generating evaluation…". Failed state swaps it for an error banner + "Retry evaluation" button.
@@ -357,24 +375,26 @@ Processing state swaps the score card for a centered spinner + "Generating evalu
 ### `ThreadDetailPage` evaluation card (wireframe)
 
 ```
+
 ┌──────────────────────────────────────────────────────────────┐
-│  Thread progress — 3 sessions                                │
-│  Trajectory: [improving]                                     │
-│  Summary: Across three sessions you've tightened your...     │
+│ Thread progress — 3 sessions │
+│ Trajectory: [improving] │
+│ Summary: Across three sessions you've tightened your... │
 ├──────────────────────────────────────────────────────────────┤
-│  Metric trends                                               │
-│  Impact & Evidence         ▲ improving  "Numbers sharper"    │
-│  Structured Storytelling   ■ stable     "Flow consistent"    │
-│  Role Fit & Motivation     ▲ improving  "..."                │
-│  Communication Poise       ▼ declining  "Faster = less poise"│
+│ Metric trends │
+│ Impact & Evidence ▲ improving "Numbers sharper" │
+│ Structured Storytelling ■ stable "Flow consistent" │
+│ Role Fit & Motivation ▲ improving "..." │
+│ Communication Poise ▼ declining "Faster = less poise"│
 ├──────────────────────────────────────────────────────────────┤
-│  Recurring strengths   │   Focus areas                       │
-│  • ...                 │   • ...                             │
+│ Recurring strengths │ Focus areas │
+│ • ... │ • ... │
 ├──────────────────────────────────────────────────────────────┤
-│  Next session focus: "Rehearse one impact story..."          │
+│ Next session focus: "Rehearse one impact story..." │
 ├──────────────────────────────────────────────────────────────┤
-│  ▸ Hidden memory — used to steer next session  [collapsed]   │
+│ ▸ Hidden memory — used to steer next session [collapsed] │
 └──────────────────────────────────────────────────────────────┘
+
 ```
 
 Expanding the `<details>` reveals `memory.hiddenGuidance` with an "internal — not shown to user during session" label.
@@ -386,14 +406,17 @@ Expanding the `<details>` reveals `memory.hiddenGuidance` with an "internal — 
 Owned by `agents-and-threads`, extended here:
 
 ```
-state.sessions[slug][i].evaluation  // see §6
-state.threads[slug][j].evaluation   // see §6
-state.threads[slug][j].memory       // see §6
+
+state.sessions[slug][i].evaluation // see §6
+state.threads[slug][j].evaluation // see §6
+state.threads[slug][j].memory // see §6
+
 ```
 
 ### New mutators on `useAppActions()`
 
 ```
+
 startEvaluation(sessionId)
 completeEvaluation(sessionId, result)
 failEvaluation(sessionId, errorMessage)
@@ -403,8 +426,9 @@ completeThreadEvaluation(threadId, result)
 failThreadEvaluation(threadId, errorMessage)
 
 applyThreadMemory(threadId, { hiddenGuidance, summary, focusAreas })
-retryEvaluation(sessionId)      // sets status back to 'idle'
+retryEvaluation(sessionId) // sets status back to 'idle'
 retryThreadEvaluation(threadId) // sets status back to 'idle'
+
 ```
 
 Each mutator produces an immutable state update and the existing debounced localStorage sync handles persistence.
@@ -412,16 +436,20 @@ Each mutator produces an immutable state update and the existing debounced local
 ### New endpoints
 
 ```
+
 POST /api/evaluate-session
 POST /api/evaluate-thread
+
 ```
 
 Both registered in `server.js`:
 
 ```
+
 import { evaluateSession, evaluateThread } from './server/evaluation.js';
 app.post('/api/evaluate-session', evaluateSession);
-app.post('/api/evaluate-thread',  evaluateThread);
+app.post('/api/evaluate-thread', evaluateThread);
+
 ```
 
 ## 9. Error handling
@@ -455,33 +483,36 @@ Retry is always manual after `failed`. No automatic exponential backoff — the 
 `scripts/smoke-evaluate-session.mjs`:
 
 ```
+
 #!/usr/bin/env node
 import 'dotenv/config';
 const BASE = process.env.SMOKE_BASE || 'http://localhost:3000';
 const body = {
-  agentSlug: 'recruiter',
-  transcript: [
-    { role: 'agent', text: 'Walk me through a recent impact story.' },
-    { role: 'user',  text: 'Last quarter I led a migration that cut p99 latency by 37%...' },
-    { role: 'agent', text: 'What was the tradeoff?' },
-    { role: 'user',  text: 'We delayed the dashboard revamp by two weeks...' }
-  ],
-  customContext: 'Targeting Stripe, Payments Infra.',
-  durationLabel: '4m 12s',
-  startedAt: Date.now() - 4*60_000,
-  endedAt: Date.now()
+agentSlug: 'recruiter',
+transcript: [
+{ role: 'agent', text: 'Walk me through a recent impact story.' },
+{ role: 'user', text: 'Last quarter I led a migration that cut p99 latency by 37%...' },
+{ role: 'agent', text: 'What was the tradeoff?' },
+{ role: 'user', text: 'We delayed the dashboard revamp by two weeks...' }
+],
+customContext: 'Targeting Stripe, Payments Infra.',
+durationLabel: '4m 12s',
+startedAt: Date.now() - 4\*60_000,
+endedAt: Date.now()
 };
 const r = await fetch(`${BASE}/api/evaluate-session`, {
-  method: 'POST',
-  headers: { 'content-type': 'application/json' },
-  body: JSON.stringify(body)
+method: 'POST',
+headers: { 'content-type': 'application/json' },
+body: JSON.stringify(body)
 });
 if (!r.ok) { console.error('HTTP', r.status); process.exit(1); }
 const json = await r.json();
 if (!json.evaluation) { console.error('missing evaluation', json); process.exit(1); }
 console.log(JSON.stringify(json.evaluation, null, 2));
+
 ```
 
 `scripts/smoke-evaluate-thread.mjs` posts two pre-evaluated fixture sessions (with mock `evaluation.result` blocks) and asserts the response contains `threadEvaluation.hiddenGuidance` as a non-empty string.
 
 Both scripts are runnable via `node scripts/smoke-evaluate-session.mjs` with `GEMINI_API_KEY` (or `GEMINI_EVALUATION_API_KEY`) set in the environment.
+```

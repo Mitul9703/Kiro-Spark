@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The evaluation engine turns raw session transcripts into structured, rubric-based feedback. It has two evaluators: a per-session evaluator (overall score, rubric metrics with justifications, strengths, improvements, recommendations, resource briefs) and a cross-session thread evaluator that produces trajectory analysis plus *hidden guidance* — an internal steering paragraph the next live session can silently inject into the agent's prompt. Both evaluators call `gemini-2.5-flash` via `@google/genai`, normalize the JSON output, and persist results to `AppProvider` state (mirrored to localStorage). Evaluations auto-trigger when a session ends with a non-empty transcript; thread-level evaluation auto-triggers once the parent thread has ≥2 completed session evaluations.
+The evaluation engine turns raw session transcripts into structured, rubric-based feedback. It has two evaluators: a per-session evaluator (overall score, rubric metrics with justifications, strengths, improvements, recommendations, resource briefs) and a cross-session thread evaluator that produces trajectory analysis plus _hidden guidance_ — an internal steering paragraph the next live session can silently inject into the agent's prompt. Both evaluators call `gemini-2.5-flash` via `@google/genai`, normalize the JSON output, and persist results to `AppProvider` state (mirrored to localStorage). Evaluations auto-trigger when a session ends with a non-empty transcript; thread-level evaluation auto-triggers once the parent thread has ≥2 completed session evaluations.
 
 ## Requirements
 

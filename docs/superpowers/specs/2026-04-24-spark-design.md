@@ -16,27 +16,27 @@ End user goal: open the app, pick an agent, attach materials, run a 10-25 minute
 
 ## 2. Decisions
 
-| Topic | Decision | Why |
-|-------|----------|-----|
-| Spec model | Five Kiro feature specs (one per area) | Matches Kiro's spec-driven workflow; enables parallel implementation; each area has a distinct surface and contract |
-| Language | Plain JavaScript (`.js`) | Fastest path to a 1:1 functional rebuild; no TS toolchain overhead |
-| Framework | Next.js 15 App Router + React 19 | Owns frontend; same process serves the Express backend |
-| Backend | Express 5 + `ws` (WebSocket) attached to the same HTTP server, wraps Next.js handler | Single-process deployment, WebSocket for live sessions |
-| AI providers | Gemini Live (voice), Gemini 2.5-flash (batch), Anam (avatar), AssemblyAI (mic STT), Firecrawl (web search/scrape), LangChain ReAct loop | Same proven mix; user has all keys ready |
-| Persistence | Browser localStorage only (`spark-state-v1`) | No DB, no auth — explicit YAGNI |
-| Deployment | Render Web Service (free plan) | WebSocket-friendly, single-process, matches the architecture |
-| Styling | Single global stylesheet driven by CSS variables; dark/light theme | No Tailwind, no styled-components — keeps the surface lean |
-| Tests | Manual QA + per-endpoint smoke scripts under `scripts/` | No test pyramid for a hackathon-class build |
+| Topic        | Decision                                                                                                                                | Why                                                                                                                 |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Spec model   | Five Kiro feature specs (one per area)                                                                                                  | Matches Kiro's spec-driven workflow; enables parallel implementation; each area has a distinct surface and contract |
+| Language     | Plain JavaScript (`.js`)                                                                                                                | Fastest path to a 1:1 functional rebuild; no TS toolchain overhead                                                  |
+| Framework    | Next.js 15 App Router + React 19                                                                                                        | Owns frontend; same process serves the Express backend                                                              |
+| Backend      | Express 5 + `ws` (WebSocket) attached to the same HTTP server, wraps Next.js handler                                                    | Single-process deployment, WebSocket for live sessions                                                              |
+| AI providers | Gemini Live (voice), Gemini 2.5-flash (batch), Anam (avatar), AssemblyAI (mic STT), Firecrawl (web search/scrape), LangChain ReAct loop | Same proven mix; user has all keys ready                                                                            |
+| Persistence  | Browser localStorage only (`spark-state-v1`)                                                                                            | No DB, no auth — explicit YAGNI                                                                                     |
+| Deployment   | Render Web Service (free plan)                                                                                                          | WebSocket-friendly, single-process, matches the architecture                                                        |
+| Styling      | Single global stylesheet driven by CSS variables; dark/light theme                                                                      | No Tailwind, no styled-components — keeps the surface lean                                                          |
+| Tests        | Manual QA + per-endpoint smoke scripts under `scripts/`                                                                                 | No test pyramid for a hackathon-class build                                                                         |
 
 ## 3. The five specs
 
-| # | Spec | One-line scope |
-|---|------|----------------|
-| 1 | `agents-and-threads` | Routing, pages, agent catalog, thread CRUD, AppProvider state shape, theming, shell. Foundation. |
-| 2 | `live-session` | `/session/[slug]` page, WS bridge, Gemini Live, Anam avatar, AssemblyAI mic, screen share, code editor |
-| 3 | `evaluation-engine` | Per-session and per-thread evaluation, hidden memory, async job tracking, evaluation UI |
-| 4 | `research-and-resources` | PDF upload + cleanup, pre-session external research, post-session resource discovery, ReAct agents |
-| 5 | `session-comparison` | Two-session side-by-side metric delta + Gemini-generated insights |
+| #   | Spec                     | One-line scope                                                                                         |
+| --- | ------------------------ | ------------------------------------------------------------------------------------------------------ |
+| 1   | `agents-and-threads`     | Routing, pages, agent catalog, thread CRUD, AppProvider state shape, theming, shell. Foundation.       |
+| 2   | `live-session`           | `/session/[slug]` page, WS bridge, Gemini Live, Anam avatar, AssemblyAI mic, screen share, code editor |
+| 3   | `evaluation-engine`      | Per-session and per-thread evaluation, hidden memory, async job tracking, evaluation UI                |
+| 4   | `research-and-resources` | PDF upload + cleanup, pre-session external research, post-session resource discovery, ReAct agents     |
+| 5   | `session-comparison`     | Two-session side-by-side metric delta + Gemini-generated insights                                      |
 
 Each spec writes its own `requirements.md`, `design.md`, and `tasks.md` under `.kiro/specs/<spec>/`. Cross-spec contracts (the AppProvider state shape, agent config, session record) are owned by `agents-and-threads`; other specs add typed extensions in their own `design.md` under "Contract changes".
 
@@ -70,10 +70,12 @@ Each spec writes its own `requirements.md`, `design.md`, and `tasks.md` under `.
 ## 5. Data flow
 
 **Pre-session prep** (blocks the live session start):
+
 1. PDF upload → `/api/upload-deck` → pdf-parse → Gemini cleanup → cleaned text returned.
 2. "Start session" → `/api/agent-external-context` → ReAct loop (Firecrawl search + scrape, Gemini synth) → markdown brief; for `coding` agent it returns a `codingQuestion`.
 
 **Live phase** (WebSocket lifecycle, single connection):
+
 1. Client opens `WS /api/live?sessionId=&agentSlug=`.
 2. Client sends `start_session` with grounded context (upload + research + customContext + thread `hiddenGuidance`).
 3. Server creates Gemini Live session with model `gemini-2.5-flash-native-audio-preview-12-2025`, voice from the chosen Anam avatar profile.
@@ -85,6 +87,7 @@ Each spec writes its own `requirements.md`, `design.md`, and `tasks.md` under `.
 9. Mute / end → `mute` / close → server cleans up.
 
 **Post-session** (background, AbortController-tracked):
+
 1. AppProvider effect: any session with a transcript and `evaluation.status === 'idle'` triggers `/api/evaluate-session`.
 2. On completion, if the parent thread has ≥2 completed sessions, trigger `/api/evaluate-thread` and apply the resulting `memory.hiddenGuidance` to the thread (used by the next live session).
 3. From the evaluation's `resourceBriefs`, trigger `/api/session-resources` (Firecrawl ReAct).

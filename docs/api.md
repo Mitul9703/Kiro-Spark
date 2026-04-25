@@ -6,17 +6,17 @@ Contracts below match the canonical implementation on `origin/main`. Every endpo
 
 ## Required environment
 
-| Var | Used by | Notes |
-|---|---|---|
-| `GEMINI_API_KEY` | every Gemini-backed route | Fallback for the per-task keys below |
-| `GEMINI_LIVE_API_KEY` | `WS /api/live` | Falls back to `GEMINI_API_KEY` |
-| `GEMINI_EVALUATION_API_KEY` | `/api/evaluate-session`, `/api/evaluate-thread`, `/api/compare-sessions` | Fallback as above |
-| `GEMINI_RESOURCE_CURATION_API_KEY` | `/api/session-resources` | Fallback as above |
-| `GEMINI_UPLOAD_PREP_API_KEY` | `/api/upload-deck` | Fallback as above |
-| `GEMINI_QUESTION_FINDER_API_KEY` | coding-agent research path | Fallback as above |
-| `ANAM_API_KEY` | `/api/anam-session-token` | No fallback — route returns 500 if missing |
-| `ASSEMBLYAI_API_KEY` | `WS /api/live` server-side mic transcription | No fallback |
-| `FIRECRAWL_API_KEY` | `/api/agent-external-context`, `/api/session-resources` | `/api/session-resources` returns 400 if missing; external-context returns `research:null` |
+| Var                                | Used by                                                                  | Notes                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `GEMINI_API_KEY`                   | every Gemini-backed route                                                | Fallback for the per-task keys below                                                      |
+| `GEMINI_LIVE_API_KEY`              | `WS /api/live`                                                           | Falls back to `GEMINI_API_KEY`                                                            |
+| `GEMINI_EVALUATION_API_KEY`        | `/api/evaluate-session`, `/api/evaluate-thread`, `/api/compare-sessions` | Fallback as above                                                                         |
+| `GEMINI_RESOURCE_CURATION_API_KEY` | `/api/session-resources`                                                 | Fallback as above                                                                         |
+| `GEMINI_UPLOAD_PREP_API_KEY`       | `/api/upload-deck`                                                       | Fallback as above                                                                         |
+| `GEMINI_QUESTION_FINDER_API_KEY`   | coding-agent research path                                               | Fallback as above                                                                         |
+| `ANAM_API_KEY`                     | `/api/anam-session-token`                                                | No fallback — route returns 500 if missing                                                |
+| `ASSEMBLYAI_API_KEY`               | `WS /api/live` server-side mic transcription                             | No fallback                                                                               |
+| `FIRECRAWL_API_KEY`                | `/api/agent-external-context`, `/api/session-resources`                  | `/api/session-resources` returns 400 if missing; external-context returns `research:null` |
 
 ## Routes
 
@@ -120,6 +120,7 @@ Content-Type: application/json
 ```
 
 Special cases:
+
 - `agentSlug === "professor"` → returns `{ research: null, message: "Professor agent does not use external research." }`.
 - Missing/invalid `companyUrl` → returns `{ research: null, message: "No valid company URL was provided." }`.
 - Missing `FIRECRAWL_API_KEY` → returns `research: null` with a message; never 5xx.
@@ -160,15 +161,22 @@ Content-Type: application/json
     "summary": "...",
     "metrics": [
       { "label": "Communication clarity", "value": 82, "justification": "..." },
-      { "label": "Impact storytelling",   "value": 74, "justification": "..." },
-      { "label": "Ownership signals",     "value": 70, "justification": "..." },
-      { "label": "Role fit",              "value": 80, "justification": "..." }
+      { "label": "Impact storytelling", "value": 74, "justification": "..." },
+      { "label": "Ownership signals", "value": 70, "justification": "..." },
+      { "label": "Role fit", "value": 80, "justification": "..." }
     ],
-    "strengths":       ["...", "...", "...", "..."],
-    "improvements":    ["...", "...", "...", "..."],
+    "strengths": ["...", "...", "...", "..."],
+    "improvements": ["...", "...", "...", "..."],
     "recommendations": ["...", "...", "...", "..."],
-    "resourceBriefs":  [
-      { "id": "brief-1", "topic": "...", "improvement": "...", "whyThisMatters": "...", "searchPhrases": ["..."], "resourceTypes": ["..."] }
+    "resourceBriefs": [
+      {
+        "id": "brief-1",
+        "topic": "...",
+        "improvement": "...",
+        "whyThisMatters": "...",
+        "searchPhrases": ["..."],
+        "resourceTypes": ["..."]
+      }
     ]
   }
 }
@@ -206,7 +214,13 @@ Content-Type: application/json
       "improvement": "...",
       "whyThisMatters": "...",
       "items": [
-        { "title": "...", "url": "https://...", "type": "video", "source": "youtube.com", "reason_relevant": "..." }
+        {
+          "title": "...",
+          "url": "https://...",
+          "type": "video",
+          "source": "youtube.com",
+          "reason_relevant": "..."
+        }
       ]
     }
   ]
@@ -253,9 +267,7 @@ The server reads `session.evaluation.{score, summary, metrics, strengths, improv
     "strengths": ["..."],
     "focusAreas": ["..."],
     "nextSessionFocus": "...",
-    "metricTrends": [
-      { "label": "Communication clarity", "trend": "improving", "comment": "..." }
-    ],
+    "metricTrends": [{ "label": "Communication clarity", "trend": "improving", "comment": "..." }],
     "hiddenGuidance": "<paragraph for next session's system instruction; never user-facing>"
   }
 }
@@ -318,29 +330,29 @@ The server creates a per-connection Gemini Live session (model `gemini-2.5-flash
 
 ### Client → server
 
-| Type | Purpose |
-|---|---|
-| `session_context` | Initial grounding payload — composed system instruction (agent prompt + custom context + thread hidden guidance + research + upload context + screen-share instruction). Must be sent first. |
-| `user_audio` | Binary 16 kHz PCM frames from the mic |
-| `screen_frame` | Base64 JPEG snapshot during screen share |
-| `screen_share_state` | `{ active, surface }` toggle |
-| `code_snapshot` | `{ snapshot, language }` debounced editor content |
-| `end_session` | User-initiated close |
-| `get_history` | Request the in-memory transcript dump |
-| `save_model_text` | Append a model-text chunk to the bridge's history (used for client-derived persistence) |
+| Type                 | Purpose                                                                                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `session_context`    | Initial grounding payload — composed system instruction (agent prompt + custom context + thread hidden guidance + research + upload context + screen-share instruction). Must be sent first. |
+| `user_audio`         | Binary 16 kHz PCM frames from the mic                                                                                                                                                        |
+| `screen_frame`       | Base64 JPEG snapshot during screen share                                                                                                                                                     |
+| `screen_share_state` | `{ active, surface }` toggle                                                                                                                                                                 |
+| `code_snapshot`      | `{ snapshot, language }` debounced editor content                                                                                                                                            |
+| `end_session`        | User-initiated close                                                                                                                                                                         |
+| `get_history`        | Request the in-memory transcript dump                                                                                                                                                        |
+| `save_model_text`    | Append a model-text chunk to the bridge's history (used for client-derived persistence)                                                                                                      |
 
 ### Server → client
 
-| Type | Purpose |
-|---|---|
-| `status` | Lifecycle hint (`connecting`, `live`, etc.) |
-| `model_text` | Final agent text chunk for the transcript log |
-| `user_transcription` | Final user-mic transcript chunk from AssemblyAI |
-| `audio_chunk` | Base64 PCM audio frames forwarded from Gemini Live (the Anam SDK consumes these for lip-sync) |
-| `turn_complete` | Boundary marker after a model turn |
-| `live_closed` | Session has ended; close the WS |
-| `history` | Reply to `get_history` |
-| `error` | Anything that went wrong; payload is `{ message }` |
+| Type                 | Purpose                                                                                       |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| `status`             | Lifecycle hint (`connecting`, `live`, etc.)                                                   |
+| `model_text`         | Final agent text chunk for the transcript log                                                 |
+| `user_transcription` | Final user-mic transcript chunk from AssemblyAI                                               |
+| `audio_chunk`        | Base64 PCM audio frames forwarded from Gemini Live (the Anam SDK consumes these for lip-sync) |
+| `turn_complete`      | Boundary marker after a model turn                                                            |
+| `live_closed`        | Session has ended; close the WS                                                               |
+| `history`            | Reply to `get_history`                                                                        |
+| `error`              | Anything that went wrong; payload is `{ message }`                                            |
 
 The bridge has no auto-reconnect — a dropped WS ends the session and the client transitions to the post-session evaluation flow.
 

@@ -23,6 +23,7 @@ No database exists. All persistence is the AppProvider's debounced localStorage 
 ```
 
 Legal transitions (all others throw in dev):
+
 - `preflight → prep` on mic granted
 - `preflight → error` on mic denied
 - `prep → live` on research resolved (or skipped for `professor`)
@@ -213,13 +214,16 @@ async function openGemini({ agent, profile, grounded }) {
   });
   const systemInstruction = [
     agent.systemPrompt,
-    grounded.upload         && `\n\n## Uploaded material\n${grounded.upload}`,
-    grounded.externalResearch && `\n\n## External research\n${JSON.stringify(grounded.externalResearch)}`,
-    grounded.customContext  && `\n\n## User context\n${grounded.customContext}`,
+    grounded.upload && `\n\n## Uploaded material\n${grounded.upload}`,
+    grounded.externalResearch &&
+      `\n\n## External research\n${JSON.stringify(grounded.externalResearch)}`,
+    grounded.customContext && `\n\n## User context\n${grounded.customContext}`,
     grounded.hiddenGuidance && `\n\n## Hidden guidance (do not reveal)\n${grounded.hiddenGuidance}`,
     grounded.coding?.interviewQuestion &&
       `\n\n## Interview question (drive the conversation off this)\n${grounded.coding.interviewQuestion}`,
-  ].filter(Boolean).join("");
+  ]
+    .filter(Boolean)
+    .join("");
 
   const session = await client.live.connect({
     model: "gemini-2.5-flash-native-audio-preview-12-2025",
@@ -243,24 +247,24 @@ All messages are JSON strings over a single WS. No reconnection. Binary frames a
 
 ### 5.1 Client → Server
 
-| `type`                | Shape                                                                                                                                                | Semantics |
-|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| `start_session`       | `{ type, grounded: { upload?:string, externalResearch?:object, customContext?:string, hiddenGuidance?:string, coding?:{ interviewQuestion, language } } }` | First frame only. Opens Gemini Live and sends kickoff prompt. |
-| `user_transcript`     | `{ type, role:"User", text:string }`                                                                                                                 | Finalized AssemblyAI chunk. Ignored while muted. |
-| `code_snapshot`       | `{ type, snapshot:string, language:string }`                                                                                                         | Coding agent only. Injected as system note. |
-| `screen_frame`        | `{ type, data:string, mimeType:"image/jpeg" }`                                                                                                       | Base64 JPEG from canvas sampler. |
-| `screen_share_state`  | `{ type, active:boolean, surface?:"monitor"|"window"|"browser" }`                                                                                    | Logged only. |
-| `mute`                | `{ type, muted:boolean }`                                                                                                                            | Pauses user-input forwarding. |
-| `get_history`         | `{ type }`                                                                                                                                           | Requests full history snapshot. |
+| `type`               | Shape                                                                                                                                                      | Semantics                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------ | ------------ |
+| `start_session`      | `{ type, grounded: { upload?:string, externalResearch?:object, customContext?:string, hiddenGuidance?:string, coding?:{ interviewQuestion, language } } }` | First frame only. Opens Gemini Live and sends kickoff prompt. |
+| `user_transcript`    | `{ type, role:"User", text:string }`                                                                                                                       | Finalized AssemblyAI chunk. Ignored while muted.              |
+| `code_snapshot`      | `{ type, snapshot:string, language:string }`                                                                                                               | Coding agent only. Injected as system note.                   |
+| `screen_frame`       | `{ type, data:string, mimeType:"image/jpeg" }`                                                                                                             | Base64 JPEG from canvas sampler.                              |
+| `screen_share_state` | `{ type, active:boolean, surface?:"monitor"                                                                                                                | "window"                                                      | "browser" }` | Logged only. |
+| `mute`               | `{ type, muted:boolean }`                                                                                                                                  | Pauses user-input forwarding.                                 |
+| `get_history`        | `{ type }`                                                                                                                                                 | Requests full history snapshot.                               |
 
 ### 5.2 Server → Client
 
-| `type`             | Shape                                                       | Semantics |
-|--------------------|-------------------------------------------------------------|-----------|
-| `transcript`       | `{ type, role:"Agent", text:string }`                       | One per finalized Gemini text chunk. |
-| `history`          | `{ type, history: Array<{role:"User"|"Agent", text}> }`     | Response to `get_history`. |
-| `transcript_ack`   | `{ type, index:number }`                                    | Increments monotonically for every user/agent append. Client uses for ordering. |
-| `error`            | `{ type, message:string }`                                  | Terminal. Client transitions to `error`. |
+| `type`           | Shape                                 | Semantics                                                                       |
+| ---------------- | ------------------------------------- | ------------------------------------------------------------------------------- | -------------------------- |
+| `transcript`     | `{ type, role:"Agent", text:string }` | One per finalized Gemini text chunk.                                            |
+| `history`        | `{ type, history: Array<{role:"User"  | "Agent", text}> }`                                                              | Response to `get_history`. |
+| `transcript_ack` | `{ type, index:number }`              | Increments monotonically for every user/agent append. Client uses for ordering. |
+| `error`          | `{ type, message:string }`            | Terminal. Client transitions to `error`.                                        |
 
 ### 5.3 Example first exchange
 
@@ -294,14 +298,14 @@ Browser  ◀── { sessionToken, avatarProfile } ─────────�
 
 ```js
 const AVATAR_POOL = [
-  { name:"Kevin",   avatarId:"<anam-avatar-id-kevin>",   gender:"Male",   voiceName:"Charon"   },
-  { name:"Gabriel", avatarId:"<anam-avatar-id-gabriel>", gender:"Male",   voiceName:"Charon"   },
-  { name:"Leo",     avatarId:"<anam-avatar-id-leo>",     gender:"Male",   voiceName:"Charon"   },
-  { name:"Richard", avatarId:"<anam-avatar-id-richard>", gender:"Male",   voiceName:"Charon"   },
-  { name:"Sophie",  avatarId:"<anam-avatar-id-sophie>",  gender:"Female", voiceName:"Aoede"    },
-  { name:"Astrid",  avatarId:"<anam-avatar-id-astrid>",  gender:"Female", voiceName:"Autonoe"  },
-  { name:"Cara",    avatarId:"<anam-avatar-id-cara>",    gender:"Female", voiceName:"Despina"  },
-  { name:"Mia",     avatarId:"<anam-avatar-id-mia>",     gender:"Female", voiceName:"Sulafat"  },
+  { name: "Kevin", avatarId: "<anam-avatar-id-kevin>", gender: "Male", voiceName: "Charon" },
+  { name: "Gabriel", avatarId: "<anam-avatar-id-gabriel>", gender: "Male", voiceName: "Charon" },
+  { name: "Leo", avatarId: "<anam-avatar-id-leo>", gender: "Male", voiceName: "Charon" },
+  { name: "Richard", avatarId: "<anam-avatar-id-richard>", gender: "Male", voiceName: "Charon" },
+  { name: "Sophie", avatarId: "<anam-avatar-id-sophie>", gender: "Female", voiceName: "Aoede" },
+  { name: "Astrid", avatarId: "<anam-avatar-id-astrid>", gender: "Female", voiceName: "Autonoe" },
+  { name: "Cara", avatarId: "<anam-avatar-id-cara>", gender: "Female", voiceName: "Despina" },
+  { name: "Mia", avatarId: "<anam-avatar-id-mia>", gender: "Female", voiceName: "Sulafat" },
 ];
 
 function pickAvatarProfile(slug) {
@@ -335,18 +339,21 @@ function useAssemblyAiTranscriber({ stream, muted, onFinal }) {
     if (!stream || muted) return;
     let cancelled = false;
     (async () => {
-      const { token } = await fetch("/api/assembly-token").then(r => r.json());
+      const { token } = await fetch("/api/assembly-token").then((r) => r.json());
       const client = new AssemblyAI({ token });
       const tx = client.realtime.transcriber({ sampleRate: 16000 });
       tx.on("transcript", (t) => {
         if (t.message_type === "FinalTranscript" && t.text) onFinal(t.text);
       });
       await tx.connect();
-      tx.streamAudio(stream);                    // sends PCM16 chunks
+      tx.streamAudio(stream); // sends PCM16 chunks
       if (cancelled) await tx.close();
       clientRef.current = tx;
     })();
-    return () => { cancelled = true; clientRef.current?.close(); };
+    return () => {
+      cancelled = true;
+      clientRef.current?.close();
+    };
   }, [stream, muted]);
 }
 ```
@@ -378,19 +385,22 @@ import { sql } from "@codemirror/lang-sql";
 
 const LANG_MAP = {
   javascript: javascript(),
-  python:     python(),
-  java:       java(),
-  cpp:        cpp(),
-  sql:        sql(),
-  pseudocode: [],   // plain text, no syntax extension
+  python: python(),
+  java: java(),
+  cpp: cpp(),
+  sql: sql(),
+  pseudocode: [], // plain text, no syntax extension
 };
 
 <CodeMirror
   value={code}
   height="100%"
   extensions={[LANG_MAP[language]]}
-  onChange={(v) => { setCode(v); debouncedSend(v, language); }}
-/>
+  onChange={(v) => {
+    setCode(v);
+    debouncedSend(v, language);
+  }}
+/>;
 ```
 
 - `debouncedSend` uses a 600ms trailing debounce.
@@ -409,17 +419,15 @@ Extends AppProvider state owned by `agents-and-threads`.
 state.agents[slug].session = {
   status: "idle" | "preflight" | "prep" | "live" | "ended" | "error",
   muted: false,
-  lastEndedAt: null,           // ISO string
-  lastDurationLabel: null,     // "MM:SS"
+  lastEndedAt: null, // ISO string
+  lastDurationLabel: null, // "MM:SS"
 };
 ```
 
 ### 10.2 Per-session additions
 
 ```js
-state.sessions[slug][i].transcript = [
-  { role: "User" | "Agent", text: string, ts: number }
-];
+state.sessions[slug][i].transcript = [{ role: "User" | "Agent", text: string, ts: number }];
 
 // coding agent only
 state.sessions[slug][i].coding = {
@@ -438,16 +446,16 @@ state.sessions[slug][i].coding = {
 
 ## 11. Error handling
 
-| Failure                   | Detection                                      | User-visible                                              | Cleanup                                |
-|---------------------------|------------------------------------------------|-----------------------------------------------------------|----------------------------------------|
-| Mic denied                | `getUserMedia` rejection                       | Error overlay "Microphone access is required."            | No resources to release.               |
-| Research fetch fails      | `/api/agent-external-context` non-2xx          | Toast, continue to `live` with null research              | None.                                  |
-| Anam token missing key    | 500 with `ANAM_API_KEY is not configured`      | Error overlay "Avatar service unavailable."               | Release mic.                           |
-| Anam stream dies          | Anam client `onError`                          | Error overlay "Lost avatar stream."                       | WS close, mic release, screen stop.    |
-| WS closes unexpectedly    | `ws.onclose` before `ended`                    | Error overlay "Connection lost."                          | Mic release, screen stop, Anam stop.   |
-| Gemini error              | Server emits `{type:"error"}` or disconnects  | Error overlay with server message                         | Same as WS close.                      |
-| Screen share denied       | `getDisplayMedia` rejection                    | Toast "Screen share cancelled." — session continues       | No teardown needed.                    |
-| AssemblyAI token fails    | `/api/assembly-token` non-2xx                  | Toast "Transcription unavailable."; session continues with agent voice only | None — retry allowed. |
+| Failure                | Detection                                    | User-visible                                                                | Cleanup                              |
+| ---------------------- | -------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------ |
+| Mic denied             | `getUserMedia` rejection                     | Error overlay "Microphone access is required."                              | No resources to release.             |
+| Research fetch fails   | `/api/agent-external-context` non-2xx        | Toast, continue to `live` with null research                                | None.                                |
+| Anam token missing key | 500 with `ANAM_API_KEY is not configured`    | Error overlay "Avatar service unavailable."                                 | Release mic.                         |
+| Anam stream dies       | Anam client `onError`                        | Error overlay "Lost avatar stream."                                         | WS close, mic release, screen stop.  |
+| WS closes unexpectedly | `ws.onclose` before `ended`                  | Error overlay "Connection lost."                                            | Mic release, screen stop, Anam stop. |
+| Gemini error           | Server emits `{type:"error"}` or disconnects | Error overlay with server message                                           | Same as WS close.                    |
+| Screen share denied    | `getDisplayMedia` rejection                  | Toast "Screen share cancelled." — session continues                         | No teardown needed.                  |
+| AssemblyAI token fails | `/api/assembly-token` non-2xx                | Toast "Transcription unavailable."; session continues with agent voice only | None — retry allowed.                |
 
 ---
 
@@ -457,13 +465,13 @@ Per `tech.md`: no test pyramid. Manual QA flow + smoke scripts.
 
 ### 12.1 Manual QA matrix (per agent)
 
-| Agent    | Flow                                                                 |
-|----------|----------------------------------------------------------------------|
-| recruiter| Create thread → upload resume PDF → paste company URL → start → share screen → have 2-turn exchange → end → verify transcript + screen frames mentioned in agent replies. |
-| professor| Start (no research) → have a 2-turn Q&A → end → transcript written. |
-| investor | Create thread → paste company site → start → share deck tab → agent asks about slide 3 → end. |
-| coding   | Create thread → start → verify interview question renders → write solution in Python → end → `session.coding.finalCode` matches editor, `language === "python"`. |
-| custom   | Paste a URL and custom prompt → start → agent reflects the prompt → end. |
+| Agent     | Flow                                                                                                                                                                      |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| recruiter | Create thread → upload resume PDF → paste company URL → start → share screen → have 2-turn exchange → end → verify transcript + screen frames mentioned in agent replies. |
+| professor | Start (no research) → have a 2-turn Q&A → end → transcript written.                                                                                                       |
+| investor  | Create thread → paste company site → start → share deck tab → agent asks about slide 3 → end.                                                                             |
+| coding    | Create thread → start → verify interview question renders → write solution in Python → end → `session.coding.finalCode` matches editor, `language === "python"`.          |
+| custom    | Paste a URL and custom prompt → start → agent reflects the prompt → end.                                                                                                  |
 
 Every run: DevTools → Network → confirm WS frames (`transcript`, `user_transcript`), no reconnection loops, Anam video plays within 3s.
 

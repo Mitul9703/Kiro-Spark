@@ -70,16 +70,16 @@ npm run start       # NODE_ENV=production node server.js
 
 ## Where things live
 
-| Thing | Path |
-|---|---|
-| Express + ws bootstrap, all `/api/*` handlers | `server.js` |
-| Next.js routes (App Router) | `app/` |
-| All React components | `components/` |
-| Agent catalog (5 agents, full prompts) | `data/agents.js` |
-| Helpers consumed by both server and client | `lib/` |
-| Per-endpoint smoke tests | `scripts/` |
-| Specs & implementation plans | `.kiro/specs/`, `docs/superpowers/plans/` |
-| Steering docs (product/tech/structure) | `.kiro/steering/` |
+| Thing                                         | Path                                      |
+| --------------------------------------------- | ----------------------------------------- |
+| Express + ws bootstrap, all `/api/*` handlers | `server.js`                               |
+| Next.js routes (App Router)                   | `app/`                                    |
+| All React components                          | `components/`                             |
+| Agent catalog (5 agents, full prompts)        | `data/agents.js`                          |
+| Helpers consumed by both server and client    | `lib/`                                    |
+| Per-endpoint smoke tests                      | `scripts/`                                |
+| Specs & implementation plans                  | `.kiro/specs/`, `docs/superpowers/plans/` |
+| Steering docs (product/tech/structure)        | `.kiro/steering/`                         |
 
 ## Common gotchas
 

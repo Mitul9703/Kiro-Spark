@@ -60,7 +60,7 @@ Each task is sequenced so later tasks can be tested only after earlier tasks hav
 
 - [ ] 1.1 Create `server/firecrawl.js`. Export `searchWeb(query, { limit = 5 } = {})` and `scrapeWebsite(url)`.
 - [ ] 1.2 Both functions throw `new Error("FIRECRAWL_API_KEY is not set")` before any network call when `process.env.FIRECRAWL_API_KEY` is absent.
-- [ ] 1.3 `searchWeb` POSTs to `https://api.firecrawl.dev/v1/search` with headers `{ Authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`, 'Content-Type': 'application/json' }` and body `JSON.stringify({ query, limit })`. On non-2xx, throw `new Error(\`Firecrawl search ${res.status}: ${(await res.text()).slice(0,200)}\`)`. Normalize `data.data || data.results` into `[{ title, url, snippet }]`.
+- [ ] 1.3 `searchWeb` POSTs to `https://api.firecrawl.dev/v1/search` with headers `{ Authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`, 'Content-Type': 'application/json' }` and body `JSON.stringify({ query, limit })`. On non-2xx, throw `new Error(\`Firecrawl search ${res.status}: ${(await res.text()).slice(0,200)}\`)`. Normalize `data.data || data.results`into`[{ title, url, snippet }]`.
 - [ ] 1.4 `scrapeWebsite` POSTs to `https://api.firecrawl.dev/v2/scrape` with body `JSON.stringify({ url, formats: ['markdown'], onlyMainContent: true })`. Same error shape. Return `{ markdown: data.data?.markdown ?? '', title: data.data?.metadata?.title ?? '' }`.
 - [ ] 1.5 Wrap each `fetch` in an `AbortController` with `setTimeout(() => ctrl.abort(), 25_000)`; clear the timeout on completion. Pass `signal: ctrl.signal` to `fetch`.
 - [ ] **Verify:** `node -e "import('./server/firecrawl.js').then(m => m.searchWeb('stripe company overview', {limit:2})).then(r => console.log(JSON.stringify(r, null, 2)))"` prints an array of `{title,url,snippet}`.
@@ -177,7 +177,7 @@ Each task is sequenced so later tasks can be tested only after earlier tasks hav
 
 - [ ] 12.1 In `server/resources.js`, reuse the same ReAct factory pattern (inline — not shared with `external-context.js` per `design.md` §4). Key: `process.env.GEMINI_RESOURCE_CURATION_API_KEY ?? process.env.GEMINI_API_KEY`. 503 if missing.
 - [ ] 12.2 Implement `runResourceAgent(brief)` using the "Resource curation" system prompt from `design.md` §4. User message includes `topic`, `improvement`, `searchPhrases`, `resourceTypes`.
-- [ ] 12.3 After invocation, extract the final message text, strip leading/trailing ```json / ``` fences, `JSON.parse`. On parse failure, `console.error` and return `[]`.
+- [ ] 12.3 After invocation, extract the final message text, strip leading/trailing `json / ` fences, `JSON.parse`. On parse failure, `console.error` and return `[]`.
 - [ ] 12.4 Validate each resource has `{ title, url, type, source, reason_relevant }` and slice to 5.
 - [ ] 12.5 Export `sessionResourcesHandler(req, res)`:
   - Read `{ agentSlug, sessionId, resourceBriefs }`.
@@ -226,7 +226,7 @@ Each task is sequenced so later tasks can be tested only after earlier tasks hav
 - [ ] 15.1 `uploadDeck(slug, file)`:
   - Build a `FormData` with field `deck`.
   - Dispatch `UPLOAD/START { slug, fileName: file.name }` → `status: 'uploading'`, set `previewUrl: URL.createObjectURL(file)`.
-  - Register `jobsRef.current.set(\`upload:${slug}\`, ctrl)` where `ctrl = new AbortController()`.
+  - Register `jobsRef.current.set(\`upload:${slug}\`, ctrl)`where`ctrl = new AbortController()`.
   - `fetch('/api/upload-deck', { method: 'POST', body: form, signal: ctrl.signal })`.
   - On success: dispatch `UPLOAD/COMPLETE { slug, fileName, contextText, contextPreview }`.
   - On failure: dispatch `UPLOAD/FAIL { slug, error }` and `pushToast({ message, kind: 'error' })`.
@@ -393,10 +393,10 @@ state.sessions[slug][i].resources = {
 **Mutators added to `useAppActions()`:**
 
 ```js
-uploadDeck(slug, file)                                      // returns void
-clearUpload(slug)                                           // returns void
-runResearchPrep(slug, { agentSlug, companyUrl, customContext, upload })  // returns Promise<void>
-fetchSessionResources(slug, sessionId, briefs)              // returns Promise<void>
+uploadDeck(slug, file); // returns void
+clearUpload(slug); // returns void
+runResearchPrep(slug, { agentSlug, companyUrl, customContext, upload }); // returns Promise<void>
+fetchSessionResources(slug, sessionId, briefs); // returns Promise<void>
 ```
 
 All four register a `jobKey` in the shared `jobsRef.current` (keys: `upload:${slug}`, `researchPrep:${slug}`, `resources:${sessionId}`). Aborts from the existing session-lifecycle cleanup path (declared in `agents-and-threads`) will cancel any in-flight job.

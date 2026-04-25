@@ -13,6 +13,7 @@
 ## File Map
 
 ### Project bootstrap
+
 - `package.json` — npm scripts and React 19 / Next 15 dependencies for this feature.
 - `next.config.mjs` — Empty App Router config.
 - `.gitignore` — Node/Next exclusions.
@@ -21,28 +22,34 @@
 - `app/globals.css` — Theme variables, global resets, component styles.
 
 ### Shared libraries
+
 - `lib/ids.js` — `generateId(type)` helper.
 - `lib/format.js` — `formatDuration`, `formatDateTime`.
 - `lib/client-config.js` — Resolves backend URLs at runtime (stub for later specs).
 - `lib/agents.js` — Exports `agents` array, `agentBySlug`, `agentSlugs`.
 
 ### Data
+
 - `data/agents.json` — The five canonical agent configs, fully populated.
 - `data/agents.js` — Re-export wrapper around `agents.json`.
 
 ### State container
+
 - `components/app-provider.js` — Context, reducer, mutators, localStorage sync.
 
 ### Shared chrome
+
 - `components/shell.js` — Header, theme toggle, toast host, main content frame.
 
 ### Pages
+
 - `components/landing-page.js` — Hero + three-step flow.
 - `components/agents-page.js` — Directory of 5 agent cards.
 - `components/agent-detail-page.js` — Scenario, rubric, thread CRUD.
 - `components/thread-detail-page.js` — Pre-session form + sessions history.
 
 ### App Router
+
 - `app/page.js` — Renders `<LandingPage/>` in `<Shell>`.
 - `app/agents/page.js` — Renders `<AgentsPage/>`.
 - `app/agents/[slug]/page.js` — Renders `<AgentDetailPage slug/>`.
@@ -51,6 +58,7 @@
 - `app/session/[slug]/page.js` — Stub placeholder (owned by: live-session).
 
 ### Smoke / QA
+
 - `scripts/smoke-agents-catalog.mjs` — Verifies catalog invariants from Requirement 11.
 
 ---
@@ -64,6 +72,7 @@
 Bootstrap a minimum Next.js 15 / React 19 project with no extra deps yet (backend and SDK deps land in other specs).
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/package.json`:
+
   ```json
   {
     "name": "spark",
@@ -90,6 +99,7 @@ Bootstrap a minimum Next.js 15 / React 19 project with no extra deps yet (backen
   ```
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/next.config.mjs`:
+
   ```js
   /** @type {import('next').NextConfig} */
   const nextConfig = {};
@@ -97,6 +107,7 @@ Bootstrap a minimum Next.js 15 / React 19 project with no extra deps yet (backen
   ```
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/.gitignore`:
+
   ```
   node_modules/
   .next/
@@ -109,6 +120,7 @@ Bootstrap a minimum Next.js 15 / React 19 project with no extra deps yet (backen
   ```
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/.env.example`:
+
   ```
   # Server
   NODE_ENV=development
@@ -156,14 +168,15 @@ Bootstrap a minimum Next.js 15 / React 19 project with no extra deps yet (backen
 Pure helpers for IDs, time formatting, and runtime URL resolution. Used by AppProvider and pages.
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/lib/ids.js`:
+
   ```js
   function random8hex() {
-    if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.getRandomValues) {
+    if (typeof globalThis.crypto !== "undefined" && globalThis.crypto.getRandomValues) {
       const bytes = new Uint8Array(4);
       globalThis.crypto.getRandomValues(bytes);
-      return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+      return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
     }
-    return Math.random().toString(16).slice(2, 10).padStart(8, '0');
+    return Math.random().toString(16).slice(2, 10).padStart(8, "0");
   }
 
   export function generateId(type) {
@@ -172,48 +185,50 @@ Pure helpers for IDs, time formatting, and runtime URL resolution. Used by AppPr
   ```
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/lib/format.js`:
+
   ```js
   export function formatDuration(ms) {
-    if (!Number.isFinite(ms) || ms < 0) return '00:00';
+    if (!Number.isFinite(ms) || ms < 0) return "00:00";
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   }
 
   export function formatDateTime(iso) {
-    if (typeof iso !== 'string' || iso.length === 0) return '';
+    if (typeof iso !== "string" || iso.length === 0) return "";
     const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
+    if (Number.isNaN(d.getTime())) return "";
     return new Intl.DateTimeFormat(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
     }).format(d);
   }
   ```
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/lib/client-config.js`:
+
   ```js
   export function getBackendHttpUrl() {
-    if (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_BACKEND_HTTP_URL) {
+    if (typeof process !== "undefined" && process.env && process.env.NEXT_PUBLIC_BACKEND_HTTP_URL) {
       return process.env.NEXT_PUBLIC_BACKEND_HTTP_URL;
     }
-    if (typeof window !== 'undefined') return window.location.origin;
-    return '';
+    if (typeof window !== "undefined") return window.location.origin;
+    return "";
   }
 
   export function getBackendWsUrl() {
-    if (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_BACKEND_WS_URL) {
+    if (typeof process !== "undefined" && process.env && process.env.NEXT_PUBLIC_BACKEND_WS_URL) {
       return process.env.NEXT_PUBLIC_BACKEND_WS_URL;
     }
-    if (typeof window !== 'undefined') {
-      const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    if (typeof window !== "undefined") {
+      const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
       return `${scheme}//${window.location.host}`;
     }
-    return '';
+    return "";
   }
   ```
 
@@ -237,42 +252,43 @@ Pure helpers for IDs, time formatting, and runtime URL resolution. Used by AppPr
 Build the reducer, default state, mutators, and context hooks. Persistence comes in Task 4.
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/components/app-provider.js`:
-  ```js
-  'use client';
 
-  import { createContext, useCallback, useContext, useMemo, useReducer, useRef } from 'react';
-  import { generateId } from '../lib/ids.js';
+  ```js
+  "use client";
+
+  import { createContext, useCallback, useContext, useMemo, useReducer, useRef } from "react";
+  import { generateId } from "../lib/ids.js";
 
   const ACTIONS = {
-    HYDRATE: 'HYDRATE',
-    SET_THEME: 'SET_THEME',
-    PUSH_TOAST: 'PUSH_TOAST',
-    DISMISS_TOAST: 'DISMISS_TOAST',
-    PATCH_AGENT: 'PATCH_AGENT',
-    CREATE_THREAD: 'CREATE_THREAD',
-    DELETE_THREAD: 'DELETE_THREAD',
-    PATCH_THREAD: 'PATCH_THREAD',
-    CREATE_SESSION: 'CREATE_SESSION',
-    DELETE_SESSION: 'DELETE_SESSION',
-    PATCH_SESSION: 'PATCH_SESSION',
-    APPEND_TRANSCRIPT: 'APPEND_TRANSCRIPT',
+    HYDRATE: "HYDRATE",
+    SET_THEME: "SET_THEME",
+    PUSH_TOAST: "PUSH_TOAST",
+    DISMISS_TOAST: "DISMISS_TOAST",
+    PATCH_AGENT: "PATCH_AGENT",
+    CREATE_THREAD: "CREATE_THREAD",
+    DELETE_THREAD: "DELETE_THREAD",
+    PATCH_THREAD: "PATCH_THREAD",
+    CREATE_SESSION: "CREATE_SESSION",
+    DELETE_SESSION: "DELETE_SESSION",
+    PATCH_SESSION: "PATCH_SESSION",
+    APPEND_TRANSCRIPT: "APPEND_TRANSCRIPT",
   };
 
   export const defaultAgentSlice = () => ({
-    upload: { status: 'idle', fileName: null, contextText: '', previewUrl: null, error: null },
-    sessionName: '',
-    threadName: '',
-    customContextText: '',
-    companyUrl: '',
+    upload: { status: "idle", fileName: null, contextText: "", previewUrl: null, error: null },
+    sessionName: "",
+    threadName: "",
+    customContextText: "",
+    companyUrl: "",
     researchPrep: null,
     selectedThreadId: null,
-    session: { status: 'idle', muted: false, lastEndedAt: null, lastDurationLabel: null },
+    session: { status: "idle", muted: false, lastEndedAt: null, lastDurationLabel: null },
     evaluation: null,
     rating: 0,
   });
 
   export const defaultState = {
-    theme: 'dark',
+    theme: "dark",
     toasts: [],
     agents: {},
     threads: {},
@@ -395,9 +411,7 @@ Build the reducer, default state, mutators, and context hooks. Persistence comes
           sessions: {
             ...state.sessions,
             [action.slug]: sessions.map((s) =>
-              s.id === action.sessionId
-                ? { ...s, transcript: [...s.transcript, action.entry] }
-                : s,
+              s.id === action.sessionId ? { ...s, transcript: [...s.transcript, action.entry] } : s,
             ),
           },
         };
@@ -423,9 +437,9 @@ Build the reducer, default state, mutators, and context hooks. Persistence comes
       dispatch({ type: ACTIONS.SET_THEME, theme });
     }, []);
 
-    const pushToast = useCallback(({ message, kind = 'info' } = {}) => {
+    const pushToast = useCallback(({ message, kind = "info" } = {}) => {
       if (!message) return null;
-      const id = generateId('toast');
+      const id = generateId("toast");
       dispatch({ type: ACTIONS.PUSH_TOAST, toast: { id, message, kind } });
       return id;
     }, []);
@@ -436,7 +450,7 @@ Build the reducer, default state, mutators, and context hooks. Persistence comes
 
     const patchAgent = useCallback((slug, patch) => {
       if (!slug) {
-        console.warn('patchAgent: missing slug');
+        console.warn("patchAgent: missing slug");
         return;
       }
       dispatch({ type: ACTIONS.PATCH_AGENT, slug, patch });
@@ -444,12 +458,12 @@ Build the reducer, default state, mutators, and context hooks. Persistence comes
 
     const createThread = useCallback((slug, title) => {
       if (!slug || !title || !title.trim()) {
-        console.warn('createThread: invalid args');
+        console.warn("createThread: invalid args");
         return null;
       }
       const now = new Date().toISOString();
       const thread = {
-        id: generateId('thread'),
+        id: generateId("thread"),
         agentSlug: slug,
         title: title.trim(),
         createdAt: now,
@@ -465,7 +479,7 @@ Build the reducer, default state, mutators, and context hooks. Persistence comes
     const deleteThread = useCallback((slug, threadId) => {
       const list = stateRef.current.threads[slug] || [];
       if (!list.some((t) => t.id === threadId)) {
-        console.warn('deleteThread: thread not found');
+        console.warn("deleteThread: thread not found");
         return;
       }
       dispatch({ type: ACTIONS.DELETE_THREAD, slug, threadId });
@@ -474,7 +488,7 @@ Build the reducer, default state, mutators, and context hooks. Persistence comes
     const patchThread = useCallback((slug, threadId, patch) => {
       const list = stateRef.current.threads[slug] || [];
       if (!list.some((t) => t.id === threadId)) {
-        console.warn('patchThread: thread not found');
+        console.warn("patchThread: thread not found");
         return;
       }
       dispatch({ type: ACTIONS.PATCH_THREAD, slug, threadId, patch });
@@ -483,15 +497,15 @@ Build the reducer, default state, mutators, and context hooks. Persistence comes
     const createSession = useCallback((slug, threadId, partial = {}) => {
       const threads = stateRef.current.threads[slug] || [];
       if (!threads.some((t) => t.id === threadId)) {
-        console.warn('createSession: thread not found');
+        console.warn("createSession: thread not found");
         return null;
       }
       const now = new Date().toISOString();
       const session = {
-        id: generateId('session'),
+        id: generateId("session"),
         agentSlug: slug,
         threadId,
-        sessionName: partial.sessionName || 'Untitled session',
+        sessionName: partial.sessionName || "Untitled session",
         startedAt: now,
         endedAt: null,
         durationLabel: null,
@@ -499,7 +513,7 @@ Build the reducer, default state, mutators, and context hooks. Persistence comes
         upload: partial.upload || null,
         externalResearch: null,
         coding: null,
-        customContext: partial.customContext || '',
+        customContext: partial.customContext || "",
         evaluation: null,
         resources: null,
         comparison: null,
@@ -511,7 +525,7 @@ Build the reducer, default state, mutators, and context hooks. Persistence comes
     const deleteSession = useCallback((slug, sessionId) => {
       const list = stateRef.current.sessions[slug] || [];
       if (!list.some((s) => s.id === sessionId)) {
-        console.warn('deleteSession: session not found');
+        console.warn("deleteSession: session not found");
         return;
       }
       dispatch({ type: ACTIONS.DELETE_SESSION, slug, sessionId });
@@ -520,7 +534,7 @@ Build the reducer, default state, mutators, and context hooks. Persistence comes
     const patchSession = useCallback((slug, sessionId, patch) => {
       const list = stateRef.current.sessions[slug] || [];
       if (!list.some((s) => s.id === sessionId)) {
-        console.warn('patchSession: session not found');
+        console.warn("patchSession: session not found");
         return;
       }
       dispatch({ type: ACTIONS.PATCH_SESSION, slug, sessionId, patch });
@@ -529,7 +543,7 @@ Build the reducer, default state, mutators, and context hooks. Persistence comes
     const appendTranscript = useCallback((slug, sessionId, entry) => {
       const list = stateRef.current.sessions[slug] || [];
       if (!list.some((s) => s.id === sessionId)) {
-        console.warn('appendTranscript: session not found');
+        console.warn("appendTranscript: session not found");
         return;
       }
       dispatch({ type: ACTIONS.APPEND_TRANSCRIPT, slug, sessionId, entry });
@@ -579,7 +593,7 @@ Build the reducer, default state, mutators, and context hooks. Persistence comes
 
   export function useAppActions() {
     const ctx = useContext(ActionsContext);
-    if (!ctx) throw new Error('useAppActions must be used inside <AppProvider>');
+    if (!ctx) throw new Error("useAppActions must be used inside <AppProvider>");
     return ctx;
   }
   ```
@@ -601,25 +615,28 @@ Build the reducer, default state, mutators, and context hooks. Persistence comes
 Wire up hydrate-on-mount, debounced writes, and `data-theme` sync. This must be SSR-safe.
 
 - [ ] Open `components/app-provider.js` and add imports at the top:
+
   ```js
-  import { useEffect } from 'react';
+  import { useEffect } from "react";
   ```
+
   (merge with existing `react` import so it becomes `import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from 'react';`)
 
 - [ ] Add near the top of the file (above `AppProvider`):
+
   ```js
-  const STORAGE_KEY = 'spark-state-v1';
+  const STORAGE_KEY = "spark-state-v1";
 
   function tryRestore() {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === "undefined") return null;
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object') return null;
+      if (!parsed || typeof parsed !== "object") return null;
       return parsed;
     } catch (err) {
-      console.warn('spark-state-v1 corrupt, resetting', err);
+      console.warn("spark-state-v1 corrupt, resetting", err);
       return null;
     }
   }
@@ -627,16 +644,22 @@ Wire up hydrate-on-mount, debounced writes, and `data-theme` sync. This must be 
   function mergeRestored(base, restored) {
     if (!restored) return base;
     return {
-      theme: restored.theme === 'light' || restored.theme === 'dark' ? restored.theme : base.theme,
+      theme: restored.theme === "light" || restored.theme === "dark" ? restored.theme : base.theme,
       toasts: Array.isArray(restored.toasts) ? restored.toasts : base.toasts,
-      agents: restored.agents && typeof restored.agents === 'object' ? restored.agents : base.agents,
-      threads: restored.threads && typeof restored.threads === 'object' ? restored.threads : base.threads,
-      sessions: restored.sessions && typeof restored.sessions === 'object' ? restored.sessions : base.sessions,
+      agents:
+        restored.agents && typeof restored.agents === "object" ? restored.agents : base.agents,
+      threads:
+        restored.threads && typeof restored.threads === "object" ? restored.threads : base.threads,
+      sessions:
+        restored.sessions && typeof restored.sessions === "object"
+          ? restored.sessions
+          : base.sessions,
     };
   }
   ```
 
 - [ ] Inside `AppProvider`, replace the `useReducer` line with a hydrate-on-mount pattern:
+
   ```js
   const [state, dispatch] = useReducer(reducer, defaultState);
 
@@ -649,17 +672,18 @@ Wire up hydrate-on-mount, debounced writes, and `data-theme` sync. This must be 
   ```
 
 - [ ] Add the debounced writer effect inside `AppProvider`:
+
   ```js
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
+    if (typeof window === "undefined") return undefined;
     const handle = setTimeout(() => {
       try {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       } catch (err) {
-        if (err && err.name === 'QuotaExceededError') {
-          console.warn('localStorage quota exceeded');
+        if (err && err.name === "QuotaExceededError") {
+          console.warn("localStorage quota exceeded");
         } else {
-          console.warn('localStorage write failed', err);
+          console.warn("localStorage write failed", err);
         }
       }
     }, 200);
@@ -668,9 +692,10 @@ Wire up hydrate-on-mount, debounced writes, and `data-theme` sync. This must be 
   ```
 
 - [ ] Add the theme mirror effect inside `AppProvider`:
+
   ```js
   useEffect(() => {
-    if (typeof document === 'undefined') return;
+    if (typeof document === "undefined") return;
     document.documentElement.dataset.theme = state.theme;
   }, [state.theme]);
   ```
@@ -694,16 +719,18 @@ Populate all five agents with every required field. The long system/evaluation p
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/data/agents.json`. Contents: a JSON array with exactly five entries whose slugs are `"recruiter"`, `"professor"`, `"investor"`, `"coding"`, `"custom"`. For every entry include these non-empty string/array fields (shapes and inline examples are inline in `design.md` §5.1–§5.5): `slug`, `name`, `role`, `duration`, `description`, `longDescription`, `scenario`, `focus`, `flow`, `previewMetrics`, `evaluationCriteria`, `systemPrompt` (see design.md §5 for full string), `evaluationPrompt` (see design.md §5 for full string), `mockEvaluation`, `contextFieldLabel`, `contextFieldDescription`, `screenShareTitle`, `screenShareHelperText`, `screenShareEmptyText`, `screenShareInstruction`. For `coding` only, also include `codingLanguages: ["JavaScript","Python","Java","C++","SQL","Pseudocode"]`, `codingQuestionBank` (the three entries shown in design.md §5.4), and `sessionKickoff` (the welcome string shown in design.md §5.4). No other agent may carry those three fields.
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/data/agents.js`:
+
   ```js
-  import agents from './agents.json' with { type: 'json' };
+  import agents from "./agents.json" with { type: "json" };
   export default agents;
   ```
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/lib/agents.js`:
-  ```js
-  import agents from '../data/agents.js';
 
-  export const agentSlugs = ['recruiter', 'professor', 'investor', 'coding', 'custom'];
+  ```js
+  import agents from "../data/agents.js";
+
+  export const agentSlugs = ["recruiter", "professor", "investor", "coding", "custom"];
 
   const bySlug = new Map(agents.map((a) => [a.slug, a]));
 
@@ -716,44 +743,65 @@ Populate all five agents with every required field. The long system/evaluation p
   ```
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/scripts/smoke-agents-catalog.mjs`:
+
   ```js
-  import { readFileSync } from 'node:fs';
-  import { fileURLToPath } from 'node:url';
-  import { dirname, join } from 'node:path';
+  import { readFileSync } from "node:fs";
+  import { fileURLToPath } from "node:url";
+  import { dirname, join } from "node:path";
 
   const __dirname = dirname(fileURLToPath(import.meta.url));
-  const file = join(__dirname, '..', 'data', 'agents.json');
-  const agents = JSON.parse(readFileSync(file, 'utf8'));
+  const file = join(__dirname, "..", "data", "agents.json");
+  const agents = JSON.parse(readFileSync(file, "utf8"));
 
-  const expectedSlugs = ['recruiter', 'professor', 'investor', 'coding', 'custom'];
+  const expectedSlugs = ["recruiter", "professor", "investor", "coding", "custom"];
   const requiredKeys = [
-    'slug', 'name', 'role', 'duration', 'description', 'longDescription',
-    'scenario', 'focus', 'flow', 'previewMetrics', 'evaluationCriteria',
-    'systemPrompt', 'evaluationPrompt', 'mockEvaluation',
-    'contextFieldLabel', 'contextFieldDescription',
-    'screenShareTitle', 'screenShareHelperText', 'screenShareEmptyText', 'screenShareInstruction',
+    "slug",
+    "name",
+    "role",
+    "duration",
+    "description",
+    "longDescription",
+    "scenario",
+    "focus",
+    "flow",
+    "previewMetrics",
+    "evaluationCriteria",
+    "systemPrompt",
+    "evaluationPrompt",
+    "mockEvaluation",
+    "contextFieldLabel",
+    "contextFieldDescription",
+    "screenShareTitle",
+    "screenShareHelperText",
+    "screenShareEmptyText",
+    "screenShareInstruction",
   ];
-  const codingOnlyKeys = ['codingLanguages', 'codingQuestionBank', 'sessionKickoff'];
+  const codingOnlyKeys = ["codingLanguages", "codingQuestionBank", "sessionKickoff"];
 
   function assert(cond, msg) {
     if (!cond) {
-      console.error('SMOKE FAIL:', msg);
+      console.error("SMOKE FAIL:", msg);
       process.exit(1);
     }
   }
 
-  assert(Array.isArray(agents), 'agents.json is not an array');
+  assert(Array.isArray(agents), "agents.json is not an array");
   assert(agents.length === 5, `expected 5 agents, got ${agents.length}`);
   assert(
-    agents.map((a) => a.slug).sort().join(',') === expectedSlugs.slice().sort().join(','),
-    'slugs mismatch',
+    agents
+      .map((a) => a.slug)
+      .sort()
+      .join(",") === expectedSlugs.slice().sort().join(","),
+    "slugs mismatch",
   );
 
   for (const a of agents) {
     for (const k of requiredKeys) {
       const v = a[k];
       assert(
-        v !== undefined && v !== null && (typeof v !== 'string' || v.length > 0) &&
+        v !== undefined &&
+          v !== null &&
+          (typeof v !== "string" || v.length > 0) &&
           (!Array.isArray(v) || v.length > 0),
         `agent ${a.slug} missing or empty field "${k}"`,
       );
@@ -763,22 +811,22 @@ Populate all five agents with every required field. The long system/evaluation p
       `agent ${a.slug} needs >=4 evaluationCriteria items`,
     );
 
-    if (a.slug === 'coding') {
+    if (a.slug === "coding") {
       for (const k of codingOnlyKeys) {
         assert(a[k] !== undefined, `coding agent missing "${k}"`);
       }
       assert(
         JSON.stringify(a.codingLanguages) ===
-          JSON.stringify(['JavaScript', 'Python', 'Java', 'C++', 'SQL', 'Pseudocode']),
-        'coding.codingLanguages mismatch',
+          JSON.stringify(["JavaScript", "Python", "Java", "C++", "SQL", "Pseudocode"]),
+        "coding.codingLanguages mismatch",
       );
       assert(
         Array.isArray(a.codingQuestionBank) && a.codingQuestionBank.length > 0,
-        'coding.codingQuestionBank empty',
+        "coding.codingQuestionBank empty",
       );
       assert(
-        typeof a.sessionKickoff === 'string' && a.sessionKickoff.length > 0,
-        'coding.sessionKickoff empty',
+        typeof a.sessionKickoff === "string" && a.sessionKickoff.length > 0,
+        "coding.sessionKickoff empty",
       );
     } else {
       for (const k of codingOnlyKeys) {
@@ -787,7 +835,7 @@ Populate all five agents with every required field. The long system/evaluation p
     }
   }
 
-  console.log('smoke-agents-catalog: OK (5 agents validated)');
+  console.log("smoke-agents-catalog: OK (5 agents validated)");
   ```
 
 - [ ] Verification — run `node scripts/smoke-agents-catalog.mjs` and confirm stdout ends with `smoke-agents-catalog: OK`.
@@ -807,13 +855,14 @@ Populate all five agents with every required field. The long system/evaluation p
 Wire the provider under `<html>`, install theme tokens, and add the font/base resets so subsequent pages have something to render against.
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/app/layout.js`:
+
   ```js
-  import './globals.css';
-  import { AppProvider } from '../components/app-provider.js';
+  import "./globals.css";
+  import { AppProvider } from "../components/app-provider.js";
 
   export const metadata = {
-    title: 'Spark',
-    description: 'Rehearse the room before you walk in.',
+    title: "Spark",
+    description: "Rehearse the room before you walk in.",
   };
 
   export default function RootLayout({ children }) {
@@ -828,6 +877,7 @@ Wire the provider under `<html>`, install theme tokens, and add the font/base re
   ```
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/app/globals.css`:
+
   ```css
   :root {
     --radius: 14px;
@@ -863,9 +913,15 @@ Wire the provider under `<html>`, install theme tokens, and add the font/base re
 
   *,
   *::before,
-  *::after { box-sizing: border-box; }
+  *::after {
+    box-sizing: border-box;
+  }
 
-  html, body { margin: 0; padding: 0; }
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
 
   body {
     background: var(--bg);
@@ -876,12 +932,35 @@ Wire the provider under `<html>`, install theme tokens, and add the font/base re
     -webkit-font-smoothing: antialiased;
   }
 
-  a { color: inherit; text-decoration: none; }
-  button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
-  h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.2; }
-  p { margin: 0; }
-  ul { margin: 0; padding: 0; list-style: none; }
-  input, textarea {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: inherit;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    margin: 0;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  p {
+    margin: 0;
+  }
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  input,
+  textarea {
     font: inherit;
     color: var(--text);
     background: var(--surface);
@@ -889,7 +968,10 @@ Wire the provider under `<html>`, install theme tokens, and add the font/base re
     border-radius: 8px;
     padding: var(--space-3);
   }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
 
   .shell-main {
     max-width: 1120px;
@@ -906,8 +988,13 @@ Wire the provider under `<html>`, install theme tokens, and add the font/base re
     background: var(--surface);
   }
 
-  .shell-brand { font-weight: 700; font-size: 1.1rem; }
-  .shell-brand.disabled { cursor: default; }
+  .shell-brand {
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+  .shell-brand.disabled {
+    cursor: default;
+  }
 
   .toast-host {
     position: fixed;
@@ -929,9 +1016,15 @@ Wire the provider under `<html>`, install theme tokens, and add the font/base re
     border: 1px solid var(--border);
     box-shadow: var(--shadow);
   }
-  .toast.info { border-left: 3px solid var(--accent); }
-  .toast.success { border-left: 3px solid #3fb950; }
-  .toast.error { border-left: 3px solid #f85149; }
+  .toast.info {
+    border-left: 3px solid var(--accent);
+  }
+  .toast.success {
+    border-left: 3px solid #3fb950;
+  }
+  .toast.error {
+    border-left: 3px solid #f85149;
+  }
 
   .btn-primary {
     background: var(--accent);
@@ -940,7 +1033,10 @@ Wire the provider under `<html>`, install theme tokens, and add the font/base re
     border-radius: 10px;
     font-weight: 600;
   }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
   .btn-ghost {
     padding: var(--space-2) var(--space-3);
     border-radius: 8px;
@@ -960,16 +1056,31 @@ Wire the provider under `<html>`, install theme tokens, and add the font/base re
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   @media (max-width: 960px) {
-    .grid-agents { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-agents {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
   @media (max-width: 720px) {
-    .grid-agents { grid-template-columns: 1fr; }
-    .landing-flow { grid-template-columns: 1fr !important; }
+    .grid-agents {
+      grid-template-columns: 1fr;
+    }
+    .landing-flow {
+      grid-template-columns: 1fr !important;
+    }
   }
 
-  .landing-hero { padding: var(--space-7) 0; text-align: center; }
-  .landing-hero h1 { font-size: 2.5rem; margin-bottom: var(--space-4); }
-  .landing-hero p { color: var(--text-muted); margin-bottom: var(--space-5); }
+  .landing-hero {
+    padding: var(--space-7) 0;
+    text-align: center;
+  }
+  .landing-hero h1 {
+    font-size: 2.5rem;
+    margin-bottom: var(--space-4);
+  }
+  .landing-hero p {
+    color: var(--text-muted);
+    margin-bottom: var(--space-5);
+  }
   .landing-flow {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -999,7 +1110,10 @@ Wire the provider under `<html>`, install theme tokens, and add the font/base re
     margin-bottom: var(--space-3);
     cursor: pointer;
   }
-  .row .meta { color: var(--text-muted); font-size: 0.85rem; }
+  .row .meta {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
 
   .not-found {
     padding: var(--space-6);
@@ -1025,13 +1139,14 @@ Wire the provider under `<html>`, install theme tokens, and add the font/base re
 The shell wraps every page. Brand is non-interactive on `/`. Toasts auto-dismiss after 4s.
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/components/shell.js`:
-  ```js
-  'use client';
 
-  import Link from 'next/link';
-  import { usePathname } from 'next/navigation';
-  import { useEffect } from 'react';
-  import { useAppActions, useAppState } from './app-provider.js';
+  ```js
+  "use client";
+
+  import Link from "next/link";
+  import { usePathname } from "next/navigation";
+  import { useEffect } from "react";
+  import { useAppActions, useAppState } from "./app-provider.js";
 
   function Toast({ id, message, kind }) {
     const { dismissToast } = useAppActions();
@@ -1057,7 +1172,7 @@ The shell wraps every page. Brand is non-interactive on `/`. Toasts auto-dismiss
     const { theme, toasts } = useAppState();
     const { setTheme } = useAppActions();
     const pathname = usePathname();
-    const isHome = pathname === '/';
+    const isHome = pathname === "/";
 
     return (
       <>
@@ -1065,14 +1180,16 @@ The shell wraps every page. Brand is non-interactive on `/`. Toasts auto-dismiss
           {isHome ? (
             <span className="shell-brand disabled">Spark</span>
           ) : (
-            <Link href="/" className="shell-brand">Spark</Link>
+            <Link href="/" className="shell-brand">
+              Spark
+            </Link>
           )}
           <button
             className="btn-ghost"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             aria-label="Toggle theme"
           >
-            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            {theme === "dark" ? "Light mode" : "Dark mode"}
           </button>
         </header>
         <main className="shell-main">{children}</main>
@@ -1105,8 +1222,9 @@ The shell wraps every page. Brand is non-interactive on `/`. Toasts auto-dismiss
 Hero + three-step flow + secondary CTA.
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/components/landing-page.js`:
+
   ```js
-  import Link from 'next/link';
+  import Link from "next/link";
 
   export function LandingPage() {
     return (
@@ -1114,7 +1232,9 @@ Hero + three-step flow + secondary CTA.
         <section className="landing-hero">
           <h1>Spark</h1>
           <p>Rehearse the room before you walk in.</p>
-          <Link href="/agents" className="btn-primary">View agents</Link>
+          <Link href="/agents" className="btn-primary">
+            View agents
+          </Link>
         </section>
         <section className="landing-flow" aria-label="Three-step flow">
           <article className="card">
@@ -1123,15 +1243,23 @@ Hero + three-step flow + secondary CTA.
           </article>
           <article className="card">
             <h3>Rehearse</h3>
-            <p>Step into a live voice session with a realistic counterpart. Share your screen if it helps.</p>
+            <p>
+              Step into a live voice session with a realistic counterpart. Share your screen if it
+              helps.
+            </p>
           </article>
           <article className="card">
             <h3>Review</h3>
-            <p>Read your rubric-backed evaluation, track progress across sessions, and drill the gaps.</p>
+            <p>
+              Read your rubric-backed evaluation, track progress across sessions, and drill the
+              gaps.
+            </p>
           </article>
         </section>
-        <section style={{ textAlign: 'center', marginTop: 'var(--space-7)' }}>
-          <Link href="/agents" className="btn-primary">View agents</Link>
+        <section style={{ textAlign: "center", marginTop: "var(--space-7)" }}>
+          <Link href="/agents" className="btn-primary">
+            View agents
+          </Link>
         </section>
       </>
     );
@@ -1141,9 +1269,10 @@ Hero + three-step flow + secondary CTA.
   ```
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/app/page.js`:
+
   ```js
-  import Shell from '../components/shell.js';
-  import LandingPage from '../components/landing-page.js';
+  import Shell from "../components/shell.js";
+  import LandingPage from "../components/landing-page.js";
 
   export default function Page() {
     return (
@@ -1175,9 +1304,10 @@ Hero + three-step flow + secondary CTA.
 Five-card responsive grid.
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/components/agents-page.js`:
+
   ```js
-  import Link from 'next/link';
-  import agents from '../lib/agents.js';
+  import Link from "next/link";
+  import agents from "../lib/agents.js";
 
   export function AgentsPage() {
     if (!Array.isArray(agents) || agents.length === 0) {
@@ -1185,16 +1315,16 @@ Five-card responsive grid.
     }
     return (
       <>
-        <h1 style={{ marginBottom: 'var(--space-5)' }}>Agents</h1>
+        <h1 style={{ marginBottom: "var(--space-5)" }}>Agents</h1>
         <div className="grid-agents">
           {agents.map((a) => (
             <Link key={a.slug} href={`/agents/${a.slug}`} className="card" aria-label={a.name}>
               <h3>{a.name}</h3>
-              <div style={{ marginTop: 'var(--space-2)' }}>
+              <div style={{ marginTop: "var(--space-2)" }}>
                 <span className="pill">{a.role}</span>
                 <span className="pill">{a.duration}</span>
               </div>
-              <p style={{ marginTop: 'var(--space-3)', color: 'var(--text-muted)' }}>
+              <p style={{ marginTop: "var(--space-3)", color: "var(--text-muted)" }}>
                 {a.description}
               </p>
             </Link>
@@ -1208,9 +1338,10 @@ Five-card responsive grid.
   ```
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/app/agents/page.js`:
+
   ```js
-  import Shell from '../../components/shell.js';
-  import AgentsPage from '../../components/agents-page.js';
+  import Shell from "../../components/shell.js";
+  import AgentsPage from "../../components/agents-page.js";
 
   export default function Page() {
     return (
@@ -1242,12 +1373,13 @@ Five-card responsive grid.
 Scenario, long description, and collapsible rubric. Thread CRUD is added in Task 11.
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/components/agent-detail-page.js`:
-  ```js
-  'use client';
 
-  import Link from 'next/link';
-  import { useState } from 'react';
-  import { agentBySlug } from '../lib/agents.js';
+  ```js
+  "use client";
+
+  import Link from "next/link";
+  import { useState } from "react";
+  import { agentBySlug } from "../lib/agents.js";
 
   export function AgentDetailPage({ slug }) {
     const agent = agentBySlug(slug);
@@ -1257,7 +1389,9 @@ Scenario, long description, and collapsible rubric. Thread CRUD is added in Task
       return (
         <div className="not-found">
           <p>Agent not found</p>
-          <Link href="/agents" className="btn-primary">Back to agents</Link>
+          <Link href="/agents" className="btn-primary">
+            Back to agents
+          </Link>
         </div>
       );
     }
@@ -1268,28 +1402,28 @@ Scenario, long description, and collapsible rubric. Thread CRUD is added in Task
     return (
       <>
         <h1>{agent.name}</h1>
-        <p style={{ color: 'var(--text-muted)', marginTop: 'var(--space-3)' }}>
+        <p style={{ color: "var(--text-muted)", marginTop: "var(--space-3)" }}>
           {agent.longDescription}
         </p>
 
-        <section className="card" style={{ marginTop: 'var(--space-5)' }}>
+        <section className="card" style={{ marginTop: "var(--space-5)" }}>
           <h3>Scenario</h3>
-          <p style={{ marginTop: 'var(--space-3)' }}>{agent.scenario}</p>
+          <p style={{ marginTop: "var(--space-3)" }}>{agent.scenario}</p>
         </section>
 
-        <section className="card" style={{ marginTop: 'var(--space-5)' }}>
+        <section className="card" style={{ marginTop: "var(--space-5)" }}>
           <h3>Evaluation criteria</h3>
-          <ul style={{ marginTop: 'var(--space-3)' }}>
+          <ul style={{ marginTop: "var(--space-3)" }}>
             {visible.map((c) => (
-              <li key={c.label} style={{ marginBottom: 'var(--space-3)' }}>
+              <li key={c.label} style={{ marginBottom: "var(--space-3)" }}>
                 <strong>{c.label}</strong>
-                <div style={{ color: 'var(--text-muted)' }}>{c.description}</div>
+                <div style={{ color: "var(--text-muted)" }}>{c.description}</div>
               </li>
             ))}
           </ul>
           {criteria.length > 3 && (
             <button className="btn-ghost" onClick={() => setExpanded((v) => !v)}>
-              {expanded ? 'Show less' : 'Show more'}
+              {expanded ? "Show less" : "Show more"}
             </button>
           )}
         </section>
@@ -1301,9 +1435,10 @@ Scenario, long description, and collapsible rubric. Thread CRUD is added in Task
   ```
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/app/agents/[slug]/page.js`:
+
   ```js
-  import Shell from '../../../components/shell.js';
-  import AgentDetailPage from '../../../components/agent-detail-page.js';
+  import Shell from "../../../components/shell.js";
+  import AgentDetailPage from "../../../components/agent-detail-page.js";
 
   export default async function Page({ params }) {
     const { slug } = await params;
@@ -1334,85 +1469,92 @@ Scenario, long description, and collapsible rubric. Thread CRUD is added in Task
 Controlled input bound to `state.agents[slug].threadName`; list reads from `state.threads[slug]`.
 
 - [ ] Open `components/agent-detail-page.js` and extend imports:
+
   ```js
-  import { useRouter } from 'next/navigation';
-  import { useAppActions, useAppState } from './app-provider.js';
-  import { formatDateTime } from '../lib/format.js';
+  import { useRouter } from "next/navigation";
+  import { useAppActions, useAppState } from "./app-provider.js";
+  import { formatDateTime } from "../lib/format.js";
   ```
 
 - [ ] Inside `AgentDetailPage`, before the not-found guard, read state + actions:
-  ```js
-    const { agents: agentSlices, threads } = useAppState();
-    const { patchAgent, createThread, deleteThread, pushToast } = useAppActions();
-    const router = useRouter();
 
-    const agentSlice = (agent && agentSlices[agent?.slug]) || null;
-    const threadName = agentSlice?.threadName || '';
-    const threadList = (agent && threads[agent.slug]) || [];
+  ```js
+  const { agents: agentSlices, threads } = useAppState();
+  const { patchAgent, createThread, deleteThread, pushToast } = useAppActions();
+  const router = useRouter();
+
+  const agentSlice = (agent && agentSlices[agent?.slug]) || null;
+  const threadName = agentSlice?.threadName || "";
+  const threadList = (agent && threads[agent.slug]) || [];
   ```
+
   Note: move the `const agent = agentBySlug(slug);` line above these reads so `agent` is defined, keeping the not-found `return` afterward.
 
 - [ ] Append a thread-creation + list section at the end of the returned JSX (just before the closing fragment):
-  ```jsx
-        <section className="card" style={{ marginTop: 'var(--space-5)' }}>
-          <h3>Threads</h3>
-          <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
-            <input
-              type="text"
-              placeholder="Name a new thread"
-              value={threadName}
-              onChange={(e) => patchAgent(agent.slug, { threadName: e.target.value })}
-              style={{ flex: 1 }}
-              aria-label="New thread title"
-            />
-            <button
-              className="btn-primary"
-              disabled={threadName.trim().length === 0}
-              onClick={() => {
-                const id = createThread(agent.slug, threadName);
-                if (id) {
-                  patchAgent(agent.slug, { threadName: '' });
-                  pushToast({ message: 'Thread created', kind: 'success' });
-                }
-              }}
-            >
-              Create thread
-            </button>
-          </div>
 
-          <ul style={{ marginTop: 'var(--space-4)' }}>
-            {threadList.length === 0 && (
-              <li className="meta">No threads yet — create one to group practice sessions.</li>
-            )}
-            {[...threadList]
-              .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
-              .map((t) => (
-                <li
-                  key={t.id}
-                  className="row"
-                  onClick={() => router.push(`/agents/${agent.slug}/threads/${t.id}`)}
-                >
-                  <div>
-                    <div><strong>{t.title}</strong></div>
-                    <div className="meta">
-                      {formatDateTime(t.createdAt)} · {t.sessionIds.length} session{t.sessionIds.length === 1 ? '' : 's'}
-                    </div>
-                  </div>
-                  <button
-                    className="btn-ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteThread(agent.slug, t.id);
-                      pushToast({ message: 'Thread deleted', kind: 'info' });
-                    }}
-                    aria-label={`Delete thread ${t.title}`}
-                  >
-                    Delete
-                  </button>
-                </li>
-              ))}
-          </ul>
-        </section>
+  ```jsx
+  <section className="card" style={{ marginTop: "var(--space-5)" }}>
+    <h3>Threads</h3>
+    <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-3)" }}>
+      <input
+        type="text"
+        placeholder="Name a new thread"
+        value={threadName}
+        onChange={(e) => patchAgent(agent.slug, { threadName: e.target.value })}
+        style={{ flex: 1 }}
+        aria-label="New thread title"
+      />
+      <button
+        className="btn-primary"
+        disabled={threadName.trim().length === 0}
+        onClick={() => {
+          const id = createThread(agent.slug, threadName);
+          if (id) {
+            patchAgent(agent.slug, { threadName: "" });
+            pushToast({ message: "Thread created", kind: "success" });
+          }
+        }}
+      >
+        Create thread
+      </button>
+    </div>
+
+    <ul style={{ marginTop: "var(--space-4)" }}>
+      {threadList.length === 0 && (
+        <li className="meta">No threads yet — create one to group practice sessions.</li>
+      )}
+      {[...threadList]
+        .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""))
+        .map((t) => (
+          <li
+            key={t.id}
+            className="row"
+            onClick={() => router.push(`/agents/${agent.slug}/threads/${t.id}`)}
+          >
+            <div>
+              <div>
+                <strong>{t.title}</strong>
+              </div>
+              <div className="meta">
+                {formatDateTime(t.createdAt)} · {t.sessionIds.length} session
+                {t.sessionIds.length === 1 ? "" : "s"}
+              </div>
+            </div>
+            <button
+              className="btn-ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteThread(agent.slug, t.id);
+                pushToast({ message: "Thread deleted", kind: "info" });
+              }}
+              aria-label={`Delete thread ${t.title}`}
+            >
+              Delete
+            </button>
+          </li>
+        ))}
+    </ul>
+  </section>
   ```
 
 - [ ] Verification — `npm run dev`, visit `/agents/recruiter`. The "Create thread" button is disabled. Type `FAANG recruiter screen`; button enables. Click it. A "Thread created" toast appears top-right and auto-dismisses in ~4s. The list shows a row with the title, a formatted timestamp, and `0 sessions`.
@@ -1438,13 +1580,14 @@ Controlled input bound to `state.agents[slug].threadName`; list reads from `stat
 Pre-session form bound to the agent slice; "Start session" wires in Task 13; sessions history renders in Task 14.
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/components/thread-detail-page.js`:
-  ```js
-  'use client';
 
-  import Link from 'next/link';
-  import { useRouter } from 'next/navigation';
-  import { agentBySlug } from '../lib/agents.js';
-  import { useAppActions, useAppState } from './app-provider.js';
+  ```js
+  "use client";
+
+  import Link from "next/link";
+  import { useRouter } from "next/navigation";
+  import { agentBySlug } from "../lib/agents.js";
+  import { useAppActions, useAppState } from "./app-provider.js";
 
   export function ThreadDetailPage({ slug, threadId }) {
     const agent = agentBySlug(slug);
@@ -1456,7 +1599,9 @@ Pre-session form bound to the agent slice; "Start session" wires in Task 13; ses
       return (
         <div className="not-found">
           <p>Agent not found</p>
-          <Link href="/agents" className="btn-primary">Back to agents</Link>
+          <Link href="/agents" className="btn-primary">
+            Back to agents
+          </Link>
         </div>
       );
     }
@@ -1468,67 +1613,74 @@ Pre-session form bound to the agent slice; "Start session" wires in Task 13; ses
       return (
         <div className="not-found">
           <p>Thread not found</p>
-          <Link href={`/agents/${slug}`} className="btn-primary">Back to agent</Link>
+          <Link href={`/agents/${slug}`} className="btn-primary">
+            Back to agent
+          </Link>
         </div>
       );
     }
 
     const slice = agentSlices[slug] || {};
-    const sessionName = slice.sessionName || '';
-    const companyUrl = slice.companyUrl || '';
-    const customContextText = slice.customContextText || '';
+    const sessionName = slice.sessionName || "";
+    const companyUrl = slice.companyUrl || "";
+    const customContextText = slice.customContextText || "";
 
     const canStart = sessionName.trim().length > 0;
 
     const handlePdfUpload = () => {
       // owned by: research-and-resources
-      pushToast({ message: 'PDF upload is handled in the research-and-resources feature.', kind: 'info' });
+      pushToast({
+        message: "PDF upload is handled in the research-and-resources feature.",
+        kind: "info",
+      });
     };
 
     return (
       <>
         <h1>{thread.title}</h1>
-        <p className="meta" style={{ marginTop: 'var(--space-2)' }}>{agent.name}</p>
+        <p className="meta" style={{ marginTop: "var(--space-2)" }}>
+          {agent.name}
+        </p>
 
-        <section className="card" style={{ marginTop: 'var(--space-5)' }}>
+        <section className="card" style={{ marginTop: "var(--space-5)" }}>
           <h3>Start a new session</h3>
 
-          <label style={{ display: 'block', marginTop: 'var(--space-4)' }}>
+          <label style={{ display: "block", marginTop: "var(--space-4)" }}>
             <div>Session name</div>
             <input
               type="text"
               value={sessionName}
               onChange={(e) => patchAgent(slug, { sessionName: e.target.value })}
               placeholder="e.g. First pass — behavioral warmup"
-              style={{ width: '100%', marginTop: 'var(--space-2)' }}
+              style={{ width: "100%", marginTop: "var(--space-2)" }}
             />
           </label>
 
-          <label style={{ display: 'block', marginTop: 'var(--space-4)' }}>
+          <label style={{ display: "block", marginTop: "var(--space-4)" }}>
             <div>Company URL (optional)</div>
             <input
               type="url"
               value={companyUrl}
               onChange={(e) => patchAgent(slug, { companyUrl: e.target.value })}
               placeholder="https://example.com/careers/role"
-              style={{ width: '100%', marginTop: 'var(--space-2)' }}
+              style={{ width: "100%", marginTop: "var(--space-2)" }}
             />
           </label>
 
-          <label style={{ display: 'block', marginTop: 'var(--space-4)' }}>
+          <label style={{ display: "block", marginTop: "var(--space-4)" }}>
             <div>{agent.contextFieldLabel}</div>
-            <div className="meta" style={{ marginBottom: 'var(--space-2)' }}>
+            <div className="meta" style={{ marginBottom: "var(--space-2)" }}>
               {agent.contextFieldDescription}
             </div>
             <textarea
               value={customContextText}
               onChange={(e) => patchAgent(slug, { customContextText: e.target.value })}
               rows={4}
-              style={{ width: '100%' }}
+              style={{ width: "100%" }}
             />
           </label>
 
-          <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-5)' }}>
+          <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-5)" }}>
             <button className="btn-ghost" onClick={handlePdfUpload}>
               Attach PDF (coming from research-and-resources)
             </button>
@@ -1551,9 +1703,10 @@ Pre-session form bound to the agent slice; "Start session" wires in Task 13; ses
   ```
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/app/agents/[slug]/threads/[threadId]/page.js`:
+
   ```js
-  import Shell from '../../../../../components/shell.js';
-  import ThreadDetailPage from '../../../../../components/thread-detail-page.js';
+  import Shell from "../../../../../components/shell.js";
+  import ThreadDetailPage from "../../../../../components/thread-detail-page.js";
 
   export default async function Page({ params }) {
     const { slug, threadId } = await params;
@@ -1586,23 +1739,24 @@ Pre-session form bound to the agent slice; "Start session" wires in Task 13; ses
 Create a session, bump the thread's `updatedAt`, and navigate to the live-session route.
 
 - [ ] In `components/thread-detail-page.js`, add a `handleStart` helper above the `return`:
+
   ```js
-    const handleStart = () => {
-      if (!canStart) return;
-      const nowIso = new Date().toISOString();
-      patchThread(slug, threadId, { updatedAt: nowIso });
-      const sessionId = createSession(slug, threadId, {
-        sessionName: sessionName.trim(),
-        customContext: customContextText,
-        upload: slice.upload || null,
-      });
-      if (!sessionId) {
-        pushToast({ message: 'Could not start session', kind: 'error' });
-        return;
-      }
-      patchAgent(slug, { sessionName: '' });
-      router.push(`/session/${slug}?threadId=${threadId}&sessionId=${sessionId}`);
-    };
+  const handleStart = () => {
+    if (!canStart) return;
+    const nowIso = new Date().toISOString();
+    patchThread(slug, threadId, { updatedAt: nowIso });
+    const sessionId = createSession(slug, threadId, {
+      sessionName: sessionName.trim(),
+      customContext: customContextText,
+      upload: slice.upload || null,
+    });
+    if (!sessionId) {
+      pushToast({ message: "Could not start session", kind: "error" });
+      return;
+    }
+    patchAgent(slug, { sessionName: "" });
+    router.push(`/session/${slug}?threadId=${threadId}&sessionId=${sessionId}`);
+  };
   ```
 
 - [ ] Replace the "Start session" `onClick={() => { /* Wired in Task 13 */ }}` with `onClick={handleStart}`.
@@ -1628,54 +1782,59 @@ Create a session, bump the thread's `updatedAt`, and navigate to the live-sessio
 List sessions for this thread, link to the session detail page, allow deletion.
 
 - [ ] In `components/thread-detail-page.js`, add this import near the top:
+
   ```js
-  import { formatDateTime } from '../lib/format.js';
+  import { formatDateTime } from "../lib/format.js";
   ```
 
 - [ ] Compute the session list above the `return`:
+
   ```js
-    const sessionList = (sessions[slug] || [])
-      .filter((s) => s.threadId === threadId)
-      .sort((a, b) => (b.startedAt || '').localeCompare(a.startedAt || ''));
+  const sessionList = (sessions[slug] || [])
+    .filter((s) => s.threadId === threadId)
+    .sort((a, b) => (b.startedAt || "").localeCompare(a.startedAt || ""));
   ```
 
 - [ ] Append this section immediately after the "Start a new session" card (before the closing fragment):
+
   ```jsx
-        <section className="card" style={{ marginTop: 'var(--space-5)' }}>
-          <h3>Sessions history</h3>
-          {sessionList.length === 0 && (
-            <p className="meta" style={{ marginTop: 'var(--space-3)' }}>
-              No sessions yet — start one above.
-            </p>
-          )}
-          <ul style={{ marginTop: 'var(--space-3)' }}>
-            {sessionList.map((s) => (
-              <li
-                key={s.id}
-                className="row"
-                onClick={() => router.push(`/agents/${slug}/sessions/${s.id}`)}
-              >
-                <div>
-                  <div><strong>{s.sessionName}</strong></div>
-                  <div className="meta">
-                    {formatDateTime(s.startedAt)} · {s.durationLabel || '—'}
-                  </div>
-                </div>
-                <button
-                  className="btn-ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteSession(slug, s.id);
-                    pushToast({ message: 'Session deleted', kind: 'info' });
-                  }}
-                  aria-label={`Delete session ${s.sessionName}`}
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
+  <section className="card" style={{ marginTop: "var(--space-5)" }}>
+    <h3>Sessions history</h3>
+    {sessionList.length === 0 && (
+      <p className="meta" style={{ marginTop: "var(--space-3)" }}>
+        No sessions yet — start one above.
+      </p>
+    )}
+    <ul style={{ marginTop: "var(--space-3)" }}>
+      {sessionList.map((s) => (
+        <li
+          key={s.id}
+          className="row"
+          onClick={() => router.push(`/agents/${slug}/sessions/${s.id}`)}
+        >
+          <div>
+            <div>
+              <strong>{s.sessionName}</strong>
+            </div>
+            <div className="meta">
+              {formatDateTime(s.startedAt)} · {s.durationLabel || "—"}
+            </div>
+          </div>
+          <button
+            className="btn-ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteSession(slug, s.id);
+              pushToast({ message: "Session deleted", kind: "info" });
+            }}
+            aria-label={`Delete session ${s.sessionName}`}
+          >
+            Delete
+          </button>
+        </li>
+      ))}
+    </ul>
+  </section>
   ```
 
 - [ ] Verification — `npm run dev`, create a thread, start a session (end up on the `/session/…` 404 from Task 13), use browser back to return to the thread. Expect the session to appear in "Sessions history" with its name, formatted start time, and a `—` duration.
@@ -1699,9 +1858,10 @@ List sessions for this thread, link to the session detail page, allow deletion.
 Stop navigation from 404-ing at links handed off to later specs.
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/app/agents/[slug]/sessions/[sessionId]/page.js`:
+
   ```js
-  import Link from 'next/link';
-  import Shell from '../../../../../components/shell.js';
+  import Link from "next/link";
+  import Shell from "../../../../../components/shell.js";
 
   export default async function Page({ params }) {
     const { slug, sessionId } = await params;
@@ -1709,8 +1869,12 @@ Stop navigation from 404-ing at links handed off to later specs.
       <Shell>
         <div className="not-found">
           <p>Session detail page is owned by the evaluation-engine spec.</p>
-          <p className="meta">slug: {slug} · sessionId: {sessionId}</p>
-          <Link href={`/agents/${slug}`} className="btn-primary">Back to agent</Link>
+          <p className="meta">
+            slug: {slug} · sessionId: {sessionId}
+          </p>
+          <Link href={`/agents/${slug}`} className="btn-primary">
+            Back to agent
+          </Link>
         </div>
       </Shell>
     );
@@ -1718,9 +1882,10 @@ Stop navigation from 404-ing at links handed off to later specs.
   ```
 
 - [ ] Create `/home/ashwanth/Documents/Projects/Kiro-Spark/app/session/[slug]/page.js`:
+
   ```js
-  import Link from 'next/link';
-  import Shell from '../../../components/shell.js';
+  import Link from "next/link";
+  import Shell from "../../../components/shell.js";
 
   export default async function Page({ params }) {
     const { slug } = await params;
@@ -1729,7 +1894,9 @@ Stop navigation from 404-ing at links handed off to later specs.
         <div className="not-found">
           <p>Live session page is owned by the live-session spec.</p>
           <p className="meta">slug: {slug}</p>
-          <Link href={`/agents/${slug}`} className="btn-primary">Back to agent</Link>
+          <Link href={`/agents/${slug}`} className="btn-primary">
+            Back to agent
+          </Link>
         </div>
       </Shell>
     );
@@ -1789,6 +1956,7 @@ Walk the ten manual QA flows from `design.md` §10, run the catalog smoke, and s
 This plan establishes the following AppProvider surface that other specs extend. None of these names or shapes should change without a coordinated spec update.
 
 ### State slices owned here (in `state`)
+
 - `state.theme: 'dark' | 'light'`
 - `state.toasts: Toast[]`
 - `state.agents: Record<slug, AgentSlice>`
@@ -1796,6 +1964,7 @@ This plan establishes the following AppProvider surface that other specs extend.
 - `state.sessions: Record<slug, SessionRecord[]>`
 
 ### State fields reserved for later specs (present but `null` / default here)
+
 - `AgentSlice.researchPrep` — research-and-resources
 - `AgentSlice.session` — live-session
 - `AgentSlice.evaluation` — evaluation-engine
@@ -1806,6 +1975,7 @@ This plan establishes the following AppProvider surface that other specs extend.
 - `SessionRecord.comparison` — session-comparison
 
 ### Mutators exposed by `useAppActions()`
+
 - `setTheme(theme)`
 - `pushToast({ message, kind })` → toast id
 - `dismissToast(id)`
@@ -1819,15 +1989,18 @@ This plan establishes the following AppProvider surface that other specs extend.
 - `appendTranscript(slug, sessionId, entry)`
 
 ### Refs reserved for later specs (on the actions object)
+
 - `actions._jobsRef` — `useRef(new Map())` for `jobKey → AbortController`, consumed by evaluation-engine and research-and-resources.
 - `actions._autoTriggerRef` — `useRef(new Set())` for idempotent auto-kickoff tracking, consumed by evaluation-engine.
 
 ### Helpers other specs import
+
 - `generateId(type)` from `lib/ids.js`
 - `formatDuration(ms)`, `formatDateTime(iso)` from `lib/format.js`
 - `agents`, `agentBySlug(slug)`, `agentSlugs` from `lib/agents.js`
 - `getBackendHttpUrl()`, `getBackendWsUrl()` from `lib/client-config.js`
 
 ### UI primitives
+
 - `<Shell>` wraps every page. Other specs' pages must render inside it.
 - `.card`, `.row`, `.pill`, `.btn-primary`, `.btn-ghost`, `.grid-agents`, `.toast-host` CSS utilities in `app/globals.css`.

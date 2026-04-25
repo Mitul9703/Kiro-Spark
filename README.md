@@ -1,5 +1,7 @@
 # SimCoach
 
+### Live Demo: https://kiro-spark.onrender.com/
+
 **Kiro Spark Challenge · Education track · The "Agency" Guardrail**
 
 A live rehearsal venue for the moments where a person has to perform — a thesis defense, a recruiter screen, an investor pitch, a coding interview. One Next.js app, a streaming voice-and-video pipeline, panels of AI personas built to behave like real audiences, and a structured post-session evaluation that points at exactly which sentence to fix.

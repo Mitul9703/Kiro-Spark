@@ -234,9 +234,9 @@ export function SessionDetailPage({ slug, sessionId }) {
 
   const comparisonOptions = useMemo(
     () => (state.sessions?.[slug] || []).filter(
-      (item) => item.id !== sessionId && item.evaluation?.status === "completed" && item.evaluation?.result
+      (item) => item.id !== sessionId && item.threadId === session.threadId && item.evaluation?.status === "completed" && item.evaluation?.result
     ),
-    [slug, sessionId, state.sessions]
+    [slug, sessionId, session.threadId, state.sessions]
   );
 
   const [selectedComparisonId, setSelectedComparisonId] = useState(

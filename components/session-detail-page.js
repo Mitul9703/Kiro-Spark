@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AGENT_LOOKUP } from "../lib/agents";
 import { AppShell } from "./shell";
-import { useAppState } from "./app-provider";
+import { useAppState, useAppActions } from "./app-provider";
 
 function domainLabel(url) {
   try { return new URL(url).hostname.replace(/^www\./, ""); }
@@ -215,6 +215,7 @@ function MarkdownRenderer({ content }) {
 export function SessionDetailPage({ slug, sessionId }) {
   const router = useRouter();
   const { state, requestResourceFetch, requestSessionComparison, deleteSession } = useAppState();
+  const actions = useAppActions();
   const agent = AGENT_LOOKUP[slug];
   const session = (state.sessions?.[slug] || []).find((item) => item.id === sessionId);
 
@@ -392,9 +393,16 @@ export function SessionDetailPage({ slug, sessionId }) {
           {evaluation.status === "failed" && (
             <div className="subtle-card">
               <div className="status-chip status-danger"><span className="status-dot" />Evaluation failed</div>
-              <p className="muted-copy" style={{ marginTop: 10, marginBottom: 0, fontSize: "0.9rem" }}>
+              <p className="muted-copy" style={{ marginTop: 10, marginBottom: 12, fontSize: "0.9rem" }}>
                 {evaluation.error || "The evaluation could not be completed."}
               </p>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => actions.retryEvaluation(session.agentSlug, session.id)}
+              >
+                Try again
+              </button>
             </div>
           )}
 

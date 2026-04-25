@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { AGENT_LOOKUP } from "../lib/agents";
 import { getApiUrl } from "../lib/client-config";
 import { AppShell } from "./shell";
-import { useAppState } from "./app-provider";
+import { useAppState, useAppActions } from "./app-provider";
 
 function CollapsibleSection({ title, defaultOpen = false, children, action = null }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -32,6 +32,7 @@ export function ThreadDetailPage({ slug, threadId }) {
     deleteThread,
     deleteSession,
   } = useAppState();
+  const actions = useAppActions();
   const agent = AGENT_LOOKUP[slug];
   const agentState = state.agents?.[slug];
   const upload = agentState?.upload;
@@ -426,9 +427,16 @@ export function ThreadDetailPage({ slug, threadId }) {
                 <span className="status-dot" />
                 Thread evaluation failed
               </div>
-              <p className="muted-copy" style={{ margin: "10px 0 0" }}>
+              <p className="muted-copy" style={{ margin: "10px 0 12px" }}>
                 {evaluation.error || "The thread evaluation could not be completed."}
               </p>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => actions.retryThreadEvaluation(thread.agentSlug, thread.id)}
+              >
+                Try again
+              </button>
             </div>
           ) : (
             <>

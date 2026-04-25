@@ -14,16 +14,15 @@ export function AgentsPage() {
         <p className="text-muted-foreground">Select the rehearsal room that fits your session.</p>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid auto-rows-fr gap-4 md:grid-cols-2 lg:grid-cols-3">
         {AGENTS.map((agent) => {
-          const isCustom = agent.slug === "custom";
           const isCoding = agent.slug === "coding";
 
           return (
             <Link
               href={`/agents/${agent.slug}`}
               key={agent.slug}
-              className={`group block ${isCustom ? "lg:col-span-3" : ""}`}
+              className="group block"
             >
               <Card className="group-hover:border-primary/40 h-full transition-shadow group-hover:shadow-md">
                 <CardContent className="flex h-full flex-col gap-4">

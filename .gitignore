@@ -48,3 +48,4 @@ uploads/
 *.png
 visual-audit.md
 final-report.md
+.mcp.json

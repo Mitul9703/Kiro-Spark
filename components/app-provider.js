@@ -789,23 +789,61 @@ export function AppProvider({ children }) {
 
   const runComparisonJob = useCallback(
     async (session, baselineSessionId) => {
-      // Placeholder — comparison not yet implemented
-      patchSession(session.agentSlug, session.id, (currentSession) => ({
-        ...currentSession,
-        comparison: {
-          status: "completed",
-          baselineSessionId,
-          completedAt: new Date().toISOString(),
-          result: {
-            trend: "similar",
-            summary: "Session comparison not yet implemented.",
-            metrics: [],
-          },
-          error: "",
-        },
+      const jobKey = `${session.agentSlug}:${session.id}`;
+      if (comparisonJobsRef.current.has(jobKey)) return;
+
+      const baselineSession = (state.sessions?.[session.agentSlug] || []).find(
+        (item) => item.id === baselineSessionId,
+      );
+
+      if (!baselineSession || session.evaluation?.status !== "completed" || baselineSession.evaluation?.status !== "completed") return;
+
+      const abortController = new AbortController();
+      comparisonJobsRef.current.set(jobKey, abortController);
+
+      patchSession(session.agentSlug, session.id, (cur) => ({
+        ...cur,
+        comparison: { ...cur.comparison, status: "processing", baselineSessionId, startedAt: new Date().toISOString(), error: "" },
       }));
+
+      try {
+        const response = await fetch(getApiUrl("/api/compare-sessions"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agentSlug: session.agentSlug,
+            currentSession: {
+              id: session.id, startedAt: session.startedAt, endedAt: session.endedAt,
+              durationLabel: session.durationLabel, evaluation: session.evaluation.result,
+            },
+            baselineSession: {
+              id: baselineSession.id, startedAt: baselineSession.startedAt, endedAt: baselineSession.endedAt,
+              durationLabel: baselineSession.durationLabel, evaluation: baselineSession.evaluation.result,
+            },
+          }),
+          signal: abortController.signal,
+        });
+
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "Failed to compare sessions.");
+
+        patchSession(session.agentSlug, session.id, (cur) => ({
+          ...cur,
+          comparison: { status: "completed", baselineSessionId, completedAt: new Date().toISOString(), result: payload.comparison, error: "" },
+        }));
+
+        pushToast(`${session.agentName || "Session"} comparison is ready.`);
+      } catch (error) {
+        if (abortController.signal.aborted) return;
+        patchSession(session.agentSlug, session.id, (cur) => ({
+          ...cur,
+          comparison: { ...cur.comparison, status: "failed", baselineSessionId, failedAt: new Date().toISOString(), error: error.message || "Comparison failed." },
+        }));
+      } finally {
+        comparisonJobsRef.current.delete(jobKey);
+      }
     },
-    [patchSession],
+    [patchSession, pushToast, state.sessions],
   );
 
   const requestSessionComparison = useCallback(

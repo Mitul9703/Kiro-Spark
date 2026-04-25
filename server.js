@@ -155,6 +155,22 @@ const threadEvaluationResponseSchema = {
   },
 };
 
+const comparisonResponseSchema = {
+  type: Type.OBJECT,
+  required: ["trend", "summary", "metrics"],
+  properties: {
+    trend: { type: Type.STRING, description: "Overall direction of change. Use improved, mixed, similar, or declined." },
+    summary: { type: Type.STRING, description: "A short comparison inference with minimal wording." },
+    metrics: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT, required: ["label", "delta", "trend", "insight"],
+        properties: { label: { type: Type.STRING }, delta: { type: Type.INTEGER }, trend: { type: Type.STRING }, insight: { type: Type.STRING } },
+      },
+    },
+  },
+};
+
 // ─── Transcript / evaluation helpers ──────────────────────────────────────────
 
 function normalizeTranscriptRole(role) {
@@ -223,6 +239,45 @@ function normalizeEvaluationResult(agent, rawResult) {
           .filter((brief) => brief.topic && brief.improvement)
           .slice(0, 2)
       : [],
+  };
+}
+
+function normalizeComparisonResult(agent, rawResult, currentEvaluation, baselineEvaluation) {
+  const allowedTrends = new Set(["improved", "mixed", "similar", "declined"]);
+  const currentMetrics = Array.isArray(currentEvaluation?.metrics) ? currentEvaluation.metrics : [];
+  const baselineMetrics = Array.isArray(baselineEvaluation?.metrics) ? baselineEvaluation.metrics : [];
+
+  const metrics = (agent.evaluationCriteria || []).map((criterion) => {
+    const currentMetric = currentMetrics.find((item) => item.label === criterion.label);
+    const baselineMetric = baselineMetrics.find((item) => item.label === criterion.label);
+    const currentValue = typeof currentMetric?.value === "number" ? currentMetric.value : 0;
+    const baselineValue = typeof baselineMetric?.value === "number" ? baselineMetric.value : 0;
+    const rawMetric = Array.isArray(rawResult?.metrics) ? rawResult.metrics.find((item) => item.label === criterion.label) : null;
+    const delta = typeof rawMetric?.delta === "number" ? rawMetric.delta : currentValue - baselineValue;
+    const trend = allowedTrends.has(rawMetric?.trend)
+      ? rawMetric.trend
+      : delta > 4 ? "improved" : delta < -4 ? "declined" : "similar";
+
+    return {
+      label: criterion.label,
+      currentValue,
+      baselineValue,
+      delta,
+      trend,
+      insight: typeof rawMetric?.insight === "string" && rawMetric.insight.trim()
+        ? rawMetric.insight.trim()
+        : delta === 0 ? "This metric stayed broadly steady between the two sessions."
+          : delta > 0 ? "This metric improved in the newer session."
+            : "This metric slipped in the newer session.",
+    };
+  });
+
+  return {
+    trend: allowedTrends.has(rawResult?.trend) ? rawResult.trend : "mixed",
+    summary: typeof rawResult?.summary === "string" && rawResult.summary.trim()
+      ? rawResult.summary.trim()
+      : "This session shows mixed movement compared with the selected earlier session.",
+    metrics,
   };
 }
 
@@ -1181,9 +1236,82 @@ ${sessionDigest}
     }
   });
 
-  // Stub: session comparison (placeholder for next iteration)
+  // Session comparison — compare two evaluations via Gemini
   app.post("/api/compare-sessions", async (req, res) => {
-    return res.json({ ok: true, comparison: null, message: "Session comparison not yet implemented." });
+    try {
+      const { agentSlug, currentSession, baselineSession } = req.body || {};
+      const agent = AGENT_LOOKUP[agentSlug] || AGENT_LOOKUP.recruiter;
+      const currentEvaluation = currentSession?.evaluation;
+      const baselineEvaluation = baselineSession?.evaluation;
+
+      if (!currentEvaluation || !baselineEvaluation) {
+        return res.status(400).json({ error: "Two completed session evaluations are required for comparison." });
+      }
+
+      const criteriaBlock = (agent.evaluationCriteria || [])
+        .map((c, i) => `${i + 1}. ${c.label}: ${c.description}`)
+        .join("\n");
+
+      const ai = new GoogleGenAI({ apiKey: getGeminiApiKey("evaluation") });
+
+      const comparisonPrompt = `
+Agent: ${agent.name}
+Scenario: ${agent.scenario}
+
+Rubric dimensions:
+${criteriaBlock}
+
+Current session:
+- Ended at: ${currentSession?.endedAt || "Unknown"}
+- Duration: ${currentSession?.durationLabel || "Unknown"}
+- Overall score: ${currentEvaluation?.score ?? "Unknown"}
+
+Current session metric scores:
+${(currentEvaluation?.metrics || []).map((m) => `- ${m.label}: ${m.value}`).join("\n")}
+
+Current session summary:
+${currentEvaluation?.summary || "No summary was saved."}
+
+Earlier comparison session:
+- Ended at: ${baselineSession?.endedAt || "Unknown"}
+- Duration: ${baselineSession?.durationLabel || "Unknown"}
+- Overall score: ${baselineEvaluation?.score ?? "Unknown"}
+
+Earlier session metric scores:
+${(baselineEvaluation?.metrics || []).map((m) => `- ${m.label}: ${m.value}`).join("\n")}
+
+Earlier session summary:
+${baselineEvaluation?.summary || "No summary was saved."}
+
+Instructions:
+- Compare the current session against the earlier session.
+- Judge whether the user improved, stayed similar, declined, or had mixed movement.
+- Keep wording concise and human.
+- Use the rubric dimensions only.
+- Return one short overall summary and one short insight per metric.
+- The delta should be current minus earlier.
+- Address the user directly as "you".
+- Never refer to the user as "the agent", "the speaker", or "the candidate".
+      `.trim();
+
+      const comparisonResponse = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: comparisonPrompt,
+        config: {
+          systemInstruction: 'You compare two saved rehearsal evaluations for the same agent. Be concise, evidence-based, and metric-aware. Address the user directly as "you" and never call them "agent", "speaker", or "candidate".',
+          responseMimeType: "application/json",
+          responseSchema: comparisonResponseSchema,
+        },
+      });
+
+      const parsed = JSON.parse((comparisonResponse.text || "").trim());
+      const comparison = normalizeComparisonResult(agent, parsed, currentEvaluation, baselineEvaluation);
+
+      return res.json({ ok: true, comparison });
+    } catch (error) {
+      console.error("Session comparison error:", error);
+      return res.status(500).json({ error: "Failed to compare sessions.", details: error.message });
+    }
   });
 
   // Fallthrough to Next.js

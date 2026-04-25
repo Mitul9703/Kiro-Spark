@@ -553,6 +553,14 @@ async function generateExternalResearchForAgent({ agentSlug, companyUrl, customC
 
 // ─── WebSocket live bridge ────────────────────────────────────────────────────
 
+// Panel persona turn arbitration
+const PANEL_TURN_PATTERNS = [
+  ["skeptic", "operator", "believer"],
+  ["believer", "skeptic", "operator"],
+  ["operator", "believer", "skeptic"],
+  ["skeptic", "believer", "operator"],
+];
+
 function registerLiveBridge(server) {
   const wss = new WebSocketServer({ noServer: true });
 
@@ -566,6 +574,443 @@ function registerLiveBridge(server) {
     const agentSlug = requestUrl.searchParams.get("agent") || "recruiter";
     const voiceName = (requestUrl.searchParams.get("voice") || "").trim();
     const agentConfig = AGENT_LOOKUP[agentSlug] || AGENT_LOOKUP.recruiter;
+
+    // Detect panel mode
+    const isPanelMode = Boolean(agentConfig.panelMode && agentConfig.panelPersonas?.length);
+
+    if (isPanelMode) {
+      handlePanelSession(clientSocket, agentSlug, agentConfig);
+    } else {
+      handleSingleSession(clientSocket, agentSlug, voiceName, agentConfig);
+    }
+  });
+
+  // ── Panel session handler (multiple Gemini streams) ─────────────────────
+
+  function handlePanelSession(clientSocket, agentSlug, agentConfig) {
+    const personas = agentConfig.panelPersonas || [];
+    const personaSessions = new Map(); // id -> { session, connected, persona }
+    let assemblyTranscriber = null;
+    let assemblyConnected = false;
+    let sessionBootstrapped = false;
+    let clientClosed = false;
+    let kickoffTimer = null;
+    let kickoffSent = false;
+
+    // Turn state
+    let activeSpeaker = null;
+    let turnIndex = 0;
+    let conversationLog = []; // [{role: "founder"|personaId, text}] — shared context
+
+    let sessionCustomContext = "";
+    let sessionThreadContext = "";
+    let sessionUploadContextText = "";
+    let sessionUploadFileName = "";
+    let sessionCompanyUrl = "";
+    let sessionExternalResearch = null;
+
+    function safeSend(data) {
+      try {
+        if (!clientClosed && clientSocket.readyState === 1) {
+          clientSocket.send(typeof data === "string" ? data : JSON.stringify(data));
+        }
+      } catch (_) {}
+    }
+
+    function buildSharedContext() {
+      const parts = [`Panel members: ${personas.map((p) => p.name).join(", ")}`];
+      if (sessionCustomContext) parts.push(`\nUser-provided context:\n${sessionCustomContext}`);
+      if (sessionUploadContextText) parts.push(`\nUploaded document context:\n${sessionUploadContextText}`);
+      if (sessionExternalResearch?.markdown) parts.push(`\nExternal research:\n${sessionExternalResearch.markdown}`);
+      if (sessionThreadContext) parts.push(`\nThread memory (hidden):\n${sessionThreadContext}`);
+      return parts.join("\n");
+    }
+
+    // Build conversation history text for injection into a persona's session
+    function buildConversationSummary() {
+      if (!conversationLog.length) return "";
+      return "\n\nConversation so far:\n" + conversationLog
+        .slice(-20) // last 20 turns to avoid token overflow
+        .map((entry) => {
+          if (entry.role === "founder") return `Founder: ${entry.text}`;
+          const p = personas.find((pp) => pp.id === entry.role);
+          return `${p?.name || entry.role}: ${entry.text}`;
+        })
+        .join("\n");
+    }
+
+    // Context-aware speaker selection
+    // Skeptic: numbers, metrics, retention, revenue, unit economics, competition
+    // Operator: market, GTM, operations, logistics, supply chain, distribution, pricing
+    // Believer: vision, team, timing, conviction, mission, passion, why-now
+    const SKEPTIC_SIGNALS = /\b(number|metric|revenue|retention|churn|arr|mrr|cac|ltv|unit econom|margin|burn|runway|profit|loss|cost|compet|rival)\b/i;
+    const OPERATOR_SIGNALS = /\b(market|gtm|go.to.market|distribution|channel|pricing|supply|logistics|operation|scale|infra|partner|vendor|regulation)\b/i;
+    const BELIEVER_SIGNALS = /\b(vision|mission|team|passion|timing|why.now|believe|excit|opportunit|impact|transform|disrupt)\b/i;
+
+    function pickNextSpeaker(excludeId, founderText) {
+      const text = (founderText || "").toLowerCase();
+
+      // Score each persona based on keyword relevance to what the founder said
+      const scores = { skeptic: 0, operator: 0, believer: 0 };
+      if (SKEPTIC_SIGNALS.test(text)) scores.skeptic += 3;
+      if (OPERATOR_SIGNALS.test(text)) scores.operator += 3;
+      if (BELIEVER_SIGNALS.test(text)) scores.believer += 3;
+
+      // Add rotation bias so it doesn't always pick the same one
+      const pattern = PANEL_TURN_PATTERNS[turnIndex % PANEL_TURN_PATTERNS.length];
+      turnIndex++;
+      pattern.forEach((id, i) => { scores[id] = (scores[id] || 0) + (3 - i); }); // first in pattern gets +3, second +2, third +1
+
+      // Remove excluded persona
+      if (excludeId) delete scores[excludeId];
+
+      // Pick the highest-scoring connected persona
+      const ranked = Object.entries(scores)
+        .filter(([id]) => personaSessions.has(id) && personaSessions.get(id).connected)
+        .sort((a, b) => b[1] - a[1]);
+
+      const picked = ranked[0]?.[0] || null;
+      if (picked) {
+        console.log(`[panel] speaker selection: ${picked} (scores: ${JSON.stringify(scores)})`);
+      }
+      return picked;
+    }
+
+    // Prompt a persona to speak — sends conversation context + trigger
+    function promptPersonaToSpeak(personaId, trigger) {
+      const entry = personaSessions.get(personaId);
+      if (!entry?.session || !entry.connected) {
+        console.log(`[panel] cannot prompt ${personaId} — not connected`);
+        return;
+      }
+
+      activeSpeaker = personaId;
+
+      // Tell the client who's about to speak BEFORE audio arrives
+      safeSend({ type: "panel_speaker", personaId, personaName: entry.persona.name });
+
+      const conversationContext = buildConversationSummary();
+      const prompt = `${conversationContext}\n\n${trigger}`;
+
+      console.log(`[panel] prompting ${entry.persona.name} to speak`);
+      entry.session.sendClientContent({
+        turns: [{ role: "user", parts: [{ text: prompt }] }],
+        turnComplete: true,
+      });
+    }
+
+    async function connectPersona(persona) {
+      // Use separate Gemini API keys if available (round-robin)
+      const liveKeys = (process.env.GEMINI_LIVE_API_KEYS || "").split(",").map((k) => k.trim()).filter(Boolean);
+      const keyIndex = personas.indexOf(persona);
+      const apiKey = liveKeys[keyIndex % liveKeys.length] || getGeminiApiKey("live");
+
+      const ai = new GoogleGenAI({ apiKey });
+      const sharedContext = buildSharedContext();
+      const systemInstruction = `${persona.systemPrompt}\n\nShared session context:\n${sharedContext}`.trim();
+
+      console.log(`[panel] connecting ${persona.name} (voice: ${persona.voice}, keyIndex: ${keyIndex})`);
+
+      // Pre-register the entry so onopen can find it
+      personaSessions.set(persona.id, { session: null, connected: false, persona, lastTranscript: "" });
+
+      const session = await ai.live.connect({
+        model: "gemini-2.5-flash-native-audio-preview-12-2025",
+        config: {
+          responseModalities: [Modality.AUDIO],
+          outputAudioTranscription: {},
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: persona.voice } } },
+          systemInstruction,
+        },
+        callbacks: {
+          onopen: () => {
+            if (clientClosed) return;
+            const e = personaSessions.get(persona.id);
+            if (e) e.connected = true;
+            console.log(`[panel] ✓ ${persona.name} Gemini session OPEN (connected: true)`);
+            safeSend({ type: "status", message: `${persona.name} joined the panel.` });
+          },
+          onmessage: (message) => {
+            if (clientClosed) return;
+            const serverContent = message.serverContent;
+
+            // Only relay if this persona is the active speaker
+            if (activeSpeaker !== persona.id) {
+              // Non-active persona generated a response — suppress it
+              // But if turnComplete fires, just ignore it silently
+              return;
+            }
+
+            const transcriptChunk = serverContent?.outputTranscription?.text;
+            if (transcriptChunk) {
+              // Accumulate transcript for this turn
+              const e = personaSessions.get(persona.id);
+              if (e) e.lastTranscript = (e.lastTranscript || "") + " " + transcriptChunk;
+              console.log(`[panel] ${persona.name} says: ${transcriptChunk.slice(0, 80)}...`);
+              safeSend({ type: "model_text", text: `[${persona.name}] ${transcriptChunk}` });
+            }
+
+            const parts = serverContent?.modelTurn?.parts || [];
+            for (const part of parts) {
+              if (part.inlineData?.data) {
+                safeSend({
+                  type: "audio_chunk",
+                  data: part.inlineData.data,
+                  mimeType: part.inlineData.mimeType || "audio/pcm;rate=24000",
+                });
+              }
+            }
+
+            if (serverContent?.turnComplete) {
+              safeSend({ type: "turn_complete" });
+
+              const e = personaSessions.get(persona.id);
+              const spokenText = (e?.lastTranscript || "").trim();
+              console.log(`[panel] ${persona.name} finished turn (spoke: ${spokenText.length} chars)`);
+
+              if (spokenText) {
+                conversationLog.push({ role: persona.id, text: spokenText });
+
+                // Share what was said with the OTHER personas as text
+                for (const [otherId, otherEntry] of personaSessions) {
+                  if (otherId !== persona.id && otherEntry.connected && otherEntry.session) {
+                    otherEntry.session.sendClientContent({
+                      turns: [{ role: "user", parts: [{ text: `[${persona.name} just said]: ${spokenText}` }] }],
+                      turnComplete: true,
+                    });
+                  }
+                }
+              }
+
+              // Reset for next turn
+              if (e) e.lastTranscript = "";
+              activeSpeaker = null;
+
+              // Parse turn control tags from the spoken text
+              // [FOLLOW-UP: Name] means this agent wants another panelist to speak next
+              // [PASS] means wait for the founder
+              const followUpMatch = spokenText.match(/\[FOLLOW-UP:\s*(\w+)\]/i);
+              const hasPass = /\[PASS\]/i.test(spokenText);
+
+              if (followUpMatch) {
+                const requestedName = followUpMatch[1].toLowerCase();
+                // Map name to persona id
+                const targetPersona = personas.find((p) =>
+                  p.name.toLowerCase().includes(requestedName) || p.id === requestedName
+                );
+                if (targetPersona && targetPersona.id !== persona.id) {
+                  console.log(`[panel] ${persona.name} requested follow-up from ${targetPersona.name}`);
+                  setTimeout(() => {
+                    if (clientClosed || activeSpeaker) return;
+                    promptPersonaToSpeak(targetPersona.id, `${persona.name} just directed the conversation to you. They said: "${spokenText.replace(/\[FOLLOW-UP:[^\]]*\]/gi, "").replace(/\[PASS\]/gi, "").trim()}"\n\nRespond in character. 1-3 sentences max. End with [PASS] or [FOLLOW-UP: Name].`);
+                  }, 500);
+                } else {
+                  console.log(`[panel] ${persona.name} requested follow-up but target not found: ${requestedName}`);
+                }
+              } else if (!hasPass) {
+                // No explicit tag — use context-aware selection with 60% probability
+                if (Math.random() < 0.6) {
+                  const nextId = pickNextSpeaker(persona.id, spokenText);
+                  if (nextId) {
+                    setTimeout(() => {
+                      if (clientClosed || activeSpeaker) return;
+                      promptPersonaToSpeak(nextId, `${persona.name} just said: "${spokenText.replace(/\[FOLLOW-UP:[^\]]*\]/gi, "").replace(/\[PASS\]/gi, "").trim()}"\n\nYou may respond, agree, disagree, or ask the founder a follow-up. Keep it to 1-2 sentences. End with [PASS] or [FOLLOW-UP: Name].`);
+                    }, 600);
+                  }
+                }
+              }
+              // If [PASS], do nothing — wait for the founder to speak
+            }
+          },
+          onerror: (error) => {
+            if (clientClosed) return;
+            console.error(`[panel] ✗ ${persona.name} Gemini ERROR:`, error.message || error);
+            safeSend({ type: "status", message: `${persona.name} encountered an error.` });
+          },
+          onclose: (event) => {
+            const e = personaSessions.get(persona.id);
+            if (e) e.connected = false;
+            console.log(`[panel] ${persona.name} Gemini session CLOSED`, event?.reason || "");
+            if (activeSpeaker === persona.id) {
+              activeSpeaker = null;
+            }
+          },
+        },
+      });
+
+      // Update the entry with the actual session object
+      const entry = personaSessions.get(persona.id);
+      if (entry) entry.session = session;
+      return session;
+    }
+
+    async function connectAssemblyPanel() {
+      if (!assembly) return;
+      assemblyTranscriber = assembly.streaming.transcriber({
+        sampleRate: 16_000, speechModel: "universal-streaming-english",
+        formatTurns: true, languageDetection: false, minTurnSilence: 700,
+      });
+      assemblyTranscriber.on("turn", (turn) => {
+        if (!turn?.transcript) return;
+        safeSend({ type: "user_transcription", text: turn.transcript, finished: !!turn.end_of_turn });
+
+        if (turn.end_of_turn) {
+          console.log(`[panel] founder said: ${turn.transcript.slice(0, 80)}...`);
+          conversationLog.push({ role: "founder", text: turn.transcript });
+
+          // Pick next speaker based on what the founder said
+          const nextId = pickNextSpeaker(null, turn.transcript);
+          if (nextId) {
+            promptPersonaToSpeak(nextId, `The founder just said: "${turn.transcript}"\n\nRespond in character. 1-3 sentences max.`);
+          }
+        }
+      });
+      assemblyTranscriber.on("error", (err) => {
+        console.error("[panel] AssemblyAI error:", err);
+      });
+      assemblyTranscriber.on("close", () => { assemblyConnected = false; });
+      await assemblyTranscriber.connect();
+      assemblyConnected = true;
+      console.log("[panel] ✓ AssemblyAI connected");
+    }
+
+    const assembly = process.env.ASSEMBLYAI_API_KEY
+      ? new AssemblyAI({ apiKey: process.env.ASSEMBLYAI_API_KEY })
+      : null;
+
+    clientSocket.on("message", async (raw) => {
+      try {
+        const msg = JSON.parse(raw.toString());
+
+        if (msg.type === "session_context") {
+          if (sessionBootstrapped) return;
+          sessionBootstrapped = true;
+
+          sessionCustomContext = (msg.customContext || "").trim();
+          sessionThreadContext = (msg.threadContext || "").trim();
+          sessionUploadContextText = (msg.upload?.contextText || "").trim();
+          sessionUploadFileName = (msg.upload?.fileName || "").trim();
+          sessionCompanyUrl = (msg.companyUrl || "").trim();
+          sessionExternalResearch = msg.externalResearch || null;
+
+          console.log("[panel] session_context received", { agentSlug, personas: personas.map((p) => p.id) });
+
+          try {
+            if (clientClosed) return;
+
+            // Connect all personas in parallel
+            console.log("[panel] connecting all personas...");
+            await Promise.all(personas.map((p) => connectPersona(p)));
+            console.log("[panel] all personas connected");
+
+            if (clientClosed) return;
+            await connectAssemblyPanel();
+            if (clientClosed) return;
+
+            safeSend({ type: "status", message: "All panel members connected. Session is live." });
+
+            // Kickoff: Believer opens the session
+            kickoffTimer = setTimeout(() => {
+              if (kickoffSent || clientClosed) return;
+              kickoffSent = true;
+              console.log("[panel] kickoff — Believer opens");
+              promptPersonaToSpeak("believer", agentConfig.sessionKickoff || "Open this investor panel session with a brief introduction of the panel, then ask the founder for a 60-second overview.");
+            }, 1000);
+          } catch (error) {
+            if (clientClosed) return;
+            console.error("[panel] failed to open session:", error);
+            safeSend({ type: "error", message: error.message || "Failed to start panel session" });
+            try { clientSocket.close(); } catch (_) {}
+          }
+          return;
+        }
+
+        // Audio goes to ALL persona sessions so they stay in audio mode
+        // Only the active speaker's audio output gets relayed to the browser
+        if (msg.type === "user_audio") {
+          for (const [, entry] of personaSessions) {
+            if (entry.connected && entry.session) {
+              entry.session.sendRealtimeInput({
+                audio: { data: msg.data, mimeType: msg.mimeType || "audio/pcm;rate=16000" },
+              });
+            }
+          }
+
+          // Always forward to AssemblyAI for transcription
+          if (assemblyTranscriber && assemblyConnected) {
+            queueMicrotask(() => {
+              try { assemblyTranscriber.sendAudio(Buffer.from(msg.data, "base64")); }
+              catch (err) { console.error("[panel] AssemblyAI audio forward error:", err); }
+            });
+          }
+          return;
+        }
+
+        if (msg.type === "screen_frame") {
+          // Only send to active speaker
+          if (activeSpeaker) {
+            const entry = personaSessions.get(activeSpeaker);
+            if (entry?.connected && entry.session && msg.data) {
+              entry.session.sendRealtimeInput({ video: { data: msg.data, mimeType: msg.mimeType || "image/jpeg" } });
+            }
+          }
+          return;
+        }
+
+        if (msg.type === "screen_share_state") {
+          const surface = (msg.surface || "screen").trim();
+          const text = msg.active
+            ? `The founder has started sharing a live ${surface}. Use what is visibly shown as passive visual context.`
+            : "The live screen share has ended.";
+          for (const [, entry] of personaSessions) {
+            if (entry.connected && entry.session) {
+              entry.session.sendClientContent({
+                turns: [{ role: "user", parts: [{ text }] }],
+                turnComplete: true,
+              });
+            }
+          }
+          return;
+        }
+
+        if (msg.type === "end_session") {
+          console.log("[panel] ending session");
+          if (kickoffTimer) { clearTimeout(kickoffTimer); kickoffTimer = null; }
+          for (const [, entry] of personaSessions) {
+            try { await entry.session?.close(); } catch (_) {}
+          }
+          try { await assemblyTranscriber?.close(); } catch (_) {}
+          safeSend({ type: "live_closed", message: "Panel session ended." });
+          return;
+        }
+
+        if (msg.type === "get_history") {
+          safeSend({ type: "history", history: [] });
+          return;
+        }
+
+        if (msg.type === "save_model_text") return;
+
+      } catch (error) {
+        console.error("[panel] message error:", error);
+        safeSend({ type: "error", message: error.message || "Invalid message" });
+      }
+    });
+
+    clientSocket.on("close", async () => {
+      clientClosed = true;
+      console.log("[panel] browser disconnected — cleaning up");
+      if (kickoffTimer) { clearTimeout(kickoffTimer); kickoffTimer = null; }
+      for (const [, entry] of personaSessions) {
+        try { await entry.session?.close(); } catch (_) {}
+      }
+      try { await assemblyTranscriber?.close(); } catch (_) {}
+    });
+  }
+
+  // ── Single-agent session handler (original behavior) ────────────────────
+
+  function handleSingleSession(clientSocket, agentSlug, voiceName, agentConfig) {
 
     const ai = new GoogleGenAI({ apiKey: getGeminiApiKey("live") });
     const assembly = process.env.ASSEMBLYAI_API_KEY
@@ -867,7 +1312,7 @@ function registerLiveBridge(server) {
       try { await geminiSession?.close(); } catch (_) {}
       try { await assemblyTranscriber?.close(); } catch (_) {}
     });
-  });
+  }
 
   // Upgrade /api/live to WebSocket
   server.on("upgrade", (request, socket, head) => {
@@ -897,12 +1342,27 @@ async function startServer() {
   // Anam session token
   app.post("/api/anam-session-token", async (req, res) => {
     try {
-      const anamApiKey = process.env.ANAM_API_KEY;
+      const { keyIndex, avatarId: requestedAvatarId, avatarName: requestedAvatarName } = req.body || {};
+
+      // Support multiple Anam keys for panel mode
+      const anamKeys = (process.env.ANAM_API_KEYS || "").split(",").map((k) => k.trim()).filter(Boolean);
+      const singleKey = (process.env.ANAM_API_KEY || "").trim();
+      let anamApiKey;
+
+      if (typeof keyIndex === "number" && anamKeys.length > 0) {
+        anamApiKey = anamKeys[keyIndex % anamKeys.length] || singleKey;
+      } else {
+        anamApiKey = singleKey || anamKeys[0];
+      }
+
       if (!anamApiKey) {
         return res.status(500).json({ error: "Missing ANAM_API_KEY." });
       }
 
-      const avatarProfile = pickRandomAnamProfile();
+      // Use requested avatar (panel mode) or pick random
+      const avatarProfile = requestedAvatarId
+        ? { name: requestedAvatarName || "Panelist", avatarId: requestedAvatarId }
+        : pickRandomAnamProfile();
 
       const response = await fetch("https://api.anam.ai/v1/auth/session-token", {
         method: "POST",
@@ -933,8 +1393,8 @@ async function startServer() {
         avatarProfile: {
           name: avatarProfile.name,
           avatarId: avatarProfile.avatarId,
-          gender: avatarProfile.gender,
-          voiceName: avatarProfile.voiceName,
+          gender: avatarProfile.gender || "Unknown",
+          voiceName: avatarProfile.voiceName || "",
         },
       });
     } catch (error) {

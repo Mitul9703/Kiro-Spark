@@ -1,0 +1,56 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "SimCoach Scenario-specific rehearsal rooms with live avatar feedback" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e6]: SC S
+      - generic [ref=e7]:
+        - generic [ref=e8]: SimCoach
+        - generic [ref=e9]: Scenario-specific rehearsal rooms with live avatar feedback
+    - button "Switch to light mode" [ref=e10] [cursor=pointer]:
+      - img [ref=e12]
+  - generic [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - link "← Back" [ref=e21] [cursor=pointer]:
+          - /url: /agents
+        - generic [ref=e22]: Hiring screen
+      - heading "Recruiter Loop" [level=1] [ref=e23]
+      - paragraph [ref=e24]: This room is designed for first-round screens, internship interviews, and polished storytelling practice. It emphasizes concise examples, confidence signals, and strong communication without losing authenticity.
+      - generic [ref=e25]:
+        - generic [ref=e26]: Behavioral answers
+        - generic [ref=e27]: Role fit
+        - generic [ref=e28]: Impact storytelling
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - generic [ref=e32]: Scenario
+          - paragraph [ref=e33]: A realistic recruiter conversation focused on fit, ownership, communication, and role alignment.
+        - generic [ref=e34]:
+          - generic [ref=e35]: Evaluation Criteria
+          - paragraph [ref=e36]: Sessions in this agent will be scored on the following dimensions.
+          - generic [ref=e37]:
+            - generic [ref=e38]:
+              - generic [ref=e40]: Communication clarity
+              - paragraph [ref=e41]: How clearly and concisely the speaker communicates experiences, decisions, and outcomes.
+            - generic [ref=e42]:
+              - generic [ref=e44]: Impact storytelling
+              - paragraph [ref=e45]: How well the speaker turns examples into concrete, memorable stories with outcomes and evidence.
+            - generic [ref=e46]:
+              - generic [ref=e48]: Ownership and reflection
+              - paragraph [ref=e49]: How clearly the speaker shows agency, accountability, and lessons learned.
+            - generic [ref=e50]:
+              - generic [ref=e52]: Role alignment
+              - paragraph [ref=e53]: How convincingly the speaker connects their background, interests, and strengths to the role.
+      - generic [ref=e54]:
+        - generic [ref=e55]: Threads
+        - generic [ref=e56]:
+          - generic [ref=e57]:
+            - generic [ref=e58]:
+              - generic [ref=e59]: Create a new thread
+              - paragraph [ref=e60]: Start a fresh practice track, then set up the next session from inside that thread.
+            - button "New thread" [ref=e61] [cursor=pointer]
+          - generic [ref=e62]:
+            - generic [ref=e63]: New thread name *
+            - textbox "New thread name" [ref=e64]:
+              - /placeholder: e.g. Recruiter Loop weekly practice
+          - generic [ref=e65]: ◎ No threads yet. Create a new one to begin.

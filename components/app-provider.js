@@ -1088,3 +1088,11 @@ export function useAppState() {
   }
   return context;
 }
+
+export function useAppActions() {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error("useAppActions must be used within AppProvider");
+  }
+  return context;
+}

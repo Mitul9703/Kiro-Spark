@@ -580,6 +580,7 @@ function registerLiveBridge(server) {
     let kickoffTimer = null;
     let sessionBootstrapped = false;
     let clientClosed = false;
+    let conversationHistory = [];
 
     // Context fields populated from session_context message
     let sessionCustomContext = "";
@@ -846,14 +847,43 @@ function registerLiveBridge(server) {
           return;
         }
 
-        // get_history — no server-side history in this impl; send empty
+        // get_history — return the server-side transcript mirror
         if (msg.type === "get_history") {
-          safeSend({ type: "history", history: [] });
+          safeSend({ type: "history", history: conversationHistory });
           return;
         }
 
-        // save_model_text — acknowledged, no-op server side
-        if (msg.type === "save_model_text") return;
+        // save_model_text — append model utterance and broadcast updated history
+        if (msg.type === "save_model_text") {
+          const text = (msg.text || "").trim();
+          if (!text) return;
+          conversationHistory.push({ role: "model", text });
+          safeSend({ type: "history", history: conversationHistory });
+          return;
+        }
+
+        // user_text — typed user turn: forward to Gemini, then commit to history
+        if (msg.type === "user_text") {
+          const text = (msg.text || "").trim();
+          if (!text) return;
+          if (!liveConnected || !geminiSession) {
+            safeSend({ type: "error", message: "Live session not ready — message not sent." });
+            return;
+          }
+          geminiSession.sendClientContent({
+            turns: [{ role: "user", parts: [{ text }] }],
+            turnComplete: true,
+          });
+          conversationHistory.push({ role: "user", text });
+          safeSend({ type: "history", history: conversationHistory });
+          return;
+        }
+
+        // kickoff — explicit client-initiated opening turn
+        if (msg.type === "kickoff") {
+          sendKickoff(msg.text || "");
+          return;
+        }
 
       } catch (error) {
         console.error("[live] message error:", error);

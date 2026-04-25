@@ -111,12 +111,12 @@ export function ThreadDetailPage({ slug, threadId }) {
     patchAgent(slug, (current) => ({
       ...current,
       session: { ...current.session, status: "starting" },
-      researchPrep: ["coding", "investor", "custom", "recruiter"].includes(slug)
+      researchPrep: ["coding", "investor", "investor-panel", "custom", "recruiter"].includes(slug)
         ? { status: "idle", result: null, error: "" }
         : current.researchPrep,
     }));
 
-    if (["coding", "investor", "custom", "recruiter"].includes(slug) && researchEnabled) {
+    if (["coding", "investor", "investor-panel", "custom", "recruiter"].includes(slug) && researchEnabled) {
       const companyUrl = (agentState.companyUrl || "").trim();
       if (companyUrl) {
         patchAgent(slug, (current) => ({
@@ -278,7 +278,7 @@ export function ThreadDetailPage({ slug, threadId }) {
                 style={{ minHeight: 120, flex: 1 }}
               />
 
-              {["coding", "investor", "custom", "recruiter"].includes(slug) ? (
+              {["coding", "investor", "investor-panel", "custom", "recruiter"].includes(slug) ? (
                 <div style={{ display: "grid", gap: 8 }}>
                   <span className="metric-label">Company URL</span>
                   <input

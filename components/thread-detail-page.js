@@ -13,7 +13,7 @@ function CollapsibleSection({ title, defaultOpen = false, children, action = nul
   return (
     <div className="subtle-card" style={{ marginTop: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <button type="button" className="toggle-btn" style={{ marginTop: 0 }} onClick={() => setOpen((current) => !current)}>
+        <button type="button" className="toggle-btn" style={{ marginTop: 0 }} aria-expanded={open} onClick={() => setOpen((current) => !current)}>
           {open ? "▲" : "▼"} {title}
         </button>
         {action}
@@ -58,7 +58,9 @@ export function ThreadDetailPage({ slug, threadId }) {
     return (
       <AppShell>
         <div className="empty-state">
-          Thread not found. <Link href={`/agents/${slug}`}>Back to {agent?.name || "agent"}.</Link>
+          <strong style={{ fontSize: "1rem", color: "var(--text)" }}>Thread not found</strong>
+          <p>This thread may have been deleted or the link is invalid.</p>
+          <Link href={`/agents/${slug}`} className="btn btn-secondary" style={{ marginTop: 4 }}>Back to {agent?.name || "agent"}</Link>
         </div>
       </AppShell>
     );
@@ -171,9 +173,9 @@ export function ThreadDetailPage({ slug, threadId }) {
   const averageScore = sessions.length
     ? Math.round(
         sessions
-          .filter((session) => session.evaluation?.result?.score)
+          .filter((session) => session.evaluation?.result?.score != null)
           .reduce((sum, session) => sum + session.evaluation.result.score, 0) /
-          Math.max(1, sessions.filter((session) => session.evaluation?.result?.score).length),
+          Math.max(1, sessions.filter((session) => session.evaluation?.result?.score != null).length),
       )
     : 0;
 
@@ -204,8 +206,8 @@ export function ThreadDetailPage({ slug, threadId }) {
             <button
               type="button"
               className="btn btn-icon btn-danger-icon"
-              aria-label="Delete thread"
-              title="Delete thread"
+              aria-label={`Delete thread "${thread.title}"`}
+              title={`Delete thread "${thread.title}"`}
               onClick={() => {
                 const confirmed = window.confirm(`Delete the thread "${thread.title}" and all its sessions?`);
                 if (!confirmed) return;
@@ -234,8 +236,18 @@ export function ThreadDetailPage({ slug, threadId }) {
           </div>
         </div>
 
-        <div className="metric-card">
-          <div className="section-title">Create Session</div>
+        <div className="metric-card session-launchpad">
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+            <div className="launchpad-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 3l14 9-14 9V3z"/>
+              </svg>
+            </div>
+            <div className="section-title" style={{ margin: 0 }}>Start a New Session</div>
+          </div>
+          <p className="muted-copy" style={{ margin: "0 0 16px" }}>
+            Name your session, add context, and launch your rehearsal.
+          </p>
           <div className="subtle-card" style={{ marginBottom: 14 }}>
             <span className="metric-label">
               Session name <span style={{ color: "var(--danger)" }}>*</span>
@@ -331,15 +343,15 @@ export function ThreadDetailPage({ slug, threadId }) {
             <div className="subtle-card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <span className="metric-label">Supporting document</span>
               {upload.status === "uploading" ? (
-                <div className="file-dropzone file-dropzone-loading">
+                <div className="file-dropzone file-dropzone-loading" style={{ border: "2px dashed var(--border)", borderRadius: 10, padding: "24px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center" }}>
                   <div className="spinner spinner-sm" style={{ margin: "0 auto 8px" }} />
                   <span style={{ fontSize: "0.88rem", color: "var(--text-muted)" }}>Uploading…</span>
                 </div>
               ) : (
-                <label className="file-dropzone" htmlFor="deck-upload-thread">
-                  <span className="file-dropzone-icon">{upload.status === "success" ? "📄" : "⬆"}</span>
-                  <span>{upload.status === "success" ? upload.fileName : "Click to upload PDF"}</span>
-                  <span style={{ fontSize: "0.8rem" }}>Optional · PDF only</span>
+                <label className="file-dropzone file-dropzone-dashed" htmlFor="deck-upload-thread" style={{ border: "2px dashed var(--border)", borderRadius: 10, padding: "28px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center", cursor: "pointer", transition: "border-color 180ms ease, background 180ms ease" }}>
+                  <span className="file-dropzone-icon" style={{ fontSize: "2rem", lineHeight: 1 }}>{upload.status === "success" ? "📄" : "⬆"}</span>
+                  <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>{upload.status === "success" ? upload.fileName : "Drag & drop or click to upload"}</span>
+                  <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", opacity: 0.7 }}>Optional · PDF only</span>
                 </label>
               )}
               <input
@@ -394,8 +406,8 @@ export function ThreadDetailPage({ slug, threadId }) {
             </p>
           ) : null}
 
-          <div style={{ marginTop: 14 }}>
-            <button type="button" className="btn btn-primary btn-start" disabled={!canStart} onClick={startSession}>
+          <div className="launchpad-cta" style={{ marginTop: 20, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+            <button type="button" className="btn btn-primary btn-start btn-launch" disabled={!canStart} onClick={startSession} style={{ fontSize: "1rem", padding: "14px 32px", letterSpacing: "0.02em" }}>
               {upload.status === "uploading" ? (
                 <><div className="spinner spinner-sm spinner-inline" />Preparing upload…</>
               ) : researchPrep.status === "loading" ? (
@@ -403,9 +415,17 @@ export function ThreadDetailPage({ slug, threadId }) {
               ) : agentState.session.status === "starting" ? (
                 <><div className="spinner spinner-sm spinner-inline" />Starting session…</>
               ) : (
-                "Start Session"
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8 }} aria-hidden="true">
+                    <path d="M5 3l14 9-14 9V3z"/>
+                  </svg>
+                  Start Session
+                </>
               )}
             </button>
+            {!agentState.sessionName?.trim() && (
+              <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", opacity: 0.7 }}>Enter a session name above to continue</span>
+            )}
           </div>
         </div>
 
@@ -437,6 +457,12 @@ export function ThreadDetailPage({ slug, threadId }) {
               >
                 Try again
               </button>
+            </div>
+          ) : evaluation.status === "idle" || !evaluation.result ? (
+            <div className="subtle-card">
+              <p className="muted-copy" style={{ margin: 0, fontSize: "0.9rem" }}>
+                Thread evaluation will run automatically after you complete a session. It tracks progress, trajectory, and focus across all sessions in this thread.
+              </p>
             </div>
           ) : (
             <>
@@ -502,51 +528,71 @@ export function ThreadDetailPage({ slug, threadId }) {
         <div className="metric-card">
           <div className="section-title">Past Sessions</div>
           {sessions.length === 0 ? (
-            <div className="empty-state">No sessions in this thread yet.</div>
+            <div className="empty-state">
+              <strong style={{ fontSize: "1rem", color: "var(--text)" }}>No sessions yet</strong>
+              <p>Start your first session above and it will appear here after you finish.</p>
+            </div>
           ) : (
             <div className="sidebar-stack" style={{ maxHeight: 520, overflowY: "auto", paddingRight: 4 }}>
-              {sessions.map((session) => (
-                <div className="session-list-item" key={session.id}>
-                  <Link href={`/agents/${slug}/sessions/${session.id}`} style={{ color: "inherit", textDecoration: "none" }}>
-                    <div className="session-list-top">
-                      <strong>{session.sessionName || "Untitled session"}</strong>
-                      <span className="pill">{session.durationLabel}</span>
-                    </div>
-                    <p className="muted-copy" style={{ margin: "6px 0 0", fontSize: "0.85rem" }}>
-                      {new Date(session.endedAt).toLocaleString()}
-                    </p>
-                    {session.evaluation?.result?.score ? (
+              {sessions.map((session) => {
+                const score = session.evaluation?.result?.score ?? null;
+                const scoreColor = score == null ? "var(--text-muted)" : score >= 80 ? "var(--brand-green)" : score >= 60 ? "var(--brand-yellow)" : "var(--brand-red)";
+                return (
+                  <div className="session-list-item" key={session.id}>
+                    <Link href={`/agents/${slug}/sessions/${session.id}`} style={{ color: "inherit", textDecoration: "none" }}>
+                      <div className="session-list-top">
+                        <strong>{session.sessionName || "Untitled session"}</strong>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {score != null ? (
+                            <span className="session-score-badge" style={{ background: `${scoreColor}22`, color: scoreColor, border: `1px solid ${scoreColor}44`, borderRadius: 6, padding: "2px 10px", fontSize: "0.85rem", fontWeight: 700, letterSpacing: "0.01em" }}>
+                              {score}
+                            </span>
+                          ) : null}
+                          <span className="pill">{session.durationLabel}</span>
+                        </div>
+                      </div>
                       <p className="muted-copy" style={{ margin: "6px 0 0", fontSize: "0.85rem" }}>
-                        Score: {session.evaluation.result.score}
+                        {new Date(session.endedAt).toLocaleString()}
                       </p>
-                    ) : null}
-                  </Link>
-                  <div className="button-row" style={{ marginTop: 12 }}>
-                    <Link href={`/agents/${slug}/sessions/${session.id}`} className="btn btn-secondary">
-                      Open session
+                      {score != null ? (
+                        <div style={{ marginTop: 8 }}>
+                          <div className="progress" style={{ height: 4 }}>
+                            <span style={{ width: `${score}%`, background: scoreColor }} />
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="muted-copy" style={{ margin: "6px 0 0", fontSize: "0.8rem", opacity: 0.6 }}>
+                          Evaluation pending
+                        </p>
+                      )}
                     </Link>
-                    <button
-                      type="button"
-                      className="btn btn-icon btn-danger-icon"
-                      aria-label="Delete session"
-                      title="Delete session"
-                      onClick={() => {
-                        const confirmed = window.confirm(`Delete the session "${session.sessionName || "Untitled session"}"?`);
-                        if (!confirmed) return;
-                        deleteSession(slug, session.id);
-                      }}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <polyline points="3 6 5 6 21 6"/>
-                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                        <line x1="10" y1="11" x2="10" y2="17"/>
-                        <line x1="14" y1="11" x2="14" y2="17"/>
-                      </svg>
-                    </button>
+                    <div className="button-row" style={{ marginTop: 12 }}>
+                      <Link href={`/agents/${slug}/sessions/${session.id}`} className="btn btn-secondary">
+                        Open session
+                      </Link>
+                      <button
+                        type="button"
+                        className="btn btn-icon btn-danger-icon"
+                        aria-label={`Delete session "${session.sessionName || "Untitled session"}"`}
+                        title={`Delete session "${session.sessionName || "Untitled session"}"`}
+                        onClick={() => {
+                          const confirmed = window.confirm(`Delete the session "${session.sessionName || "Untitled session"}"?`);
+                          if (!confirmed) return;
+                          deleteSession(slug, session.id);
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                          <line x1="10" y1="11" x2="10" y2="17"/>
+                          <line x1="14" y1="11" x2="14" y2="17"/>
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

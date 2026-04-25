@@ -56,21 +56,34 @@ function Spinner({ label }) {
   );
 }
 
-function CollapsibleList({ items, initialMax = 4, label }) {
+function CollapsibleList({ items, initialMax = 4, label, variant = "neutral" }) {
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? items : items.slice(0, initialMax);
   const hasMore = items.length > initialMax;
   if (!items.length) return null;
+
+  const iconMeta = {
+    strength: { symbol: "✓", color: "var(--brand-green)", bg: "color-mix(in srgb, var(--brand-green) 12%, transparent)" },
+    improvement: { symbol: "△", color: "#f59e0b", bg: "color-mix(in srgb, #f59e0b 12%, transparent)" },
+    neutral: { symbol: "›", color: "var(--text-muted)", bg: "transparent" },
+  };
+  const icon = iconMeta[variant] || iconMeta.neutral;
+
   return (
     <div className="subtle-card" style={{ marginTop: 14 }}>
       <div className="section-title">{label}</div>
       <div className="collapsible-list">
         {visible.map((item, i) => (
-          <div className="collapsible-list-item" key={i}>{item}</div>
+          <div className="collapsible-list-item" key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+            <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, background: icon.bg, color: icon.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 700, marginTop: 1 }} aria-hidden="true">
+              {icon.symbol}
+            </span>
+            <span style={{ flex: 1 }}>{item}</span>
+          </div>
         ))}
       </div>
       {hasMore && (
-        <button type="button" className="toggle-btn" onClick={() => setExpanded(e => !e)}>
+        <button type="button" className="toggle-btn" aria-expanded={expanded} onClick={() => setExpanded(e => !e)}>
           {expanded ? "▲ Show less" : `▼ Show all ${items.length}`}
         </button>
       )}
@@ -223,13 +236,15 @@ export function SessionDetailPage({ slug, sessionId }) {
     return (
       <AppShell>
         <div className="empty-state">
-          Session not found. <Link href={`/agents/${slug}`}>Back to {agent?.name || "agent"}.</Link>
+          <strong style={{ fontSize: "1rem", color: "var(--text)" }}>Session not found</strong>
+          <p>This session may have been deleted or the link is invalid.</p>
+          <Link href={`/agents/${slug}`} className="btn btn-secondary" style={{ marginTop: 4 }}>Back to {agent?.name || "agent"}</Link>
         </div>
       </AppShell>
     );
   }
 
-  const evaluation = session.evaluation;
+  const evaluation = session.evaluation || { status: "idle" };
   const resources = session.resources || { status: "idle", topics: [], briefs: [] };
   const comparison = session.comparison || { status: "idle", baselineSessionId: "", result: null, error: "" };
 
@@ -281,8 +296,8 @@ export function SessionDetailPage({ slug, sessionId }) {
             <button
               type="button"
               className="btn btn-icon btn-danger-icon"
-              aria-label="Delete session"
-              title="Delete session"
+              aria-label={`Delete session "${session.sessionName || "Untitled session"}"`}
+              title={`Delete session "${session.sessionName || "Untitled session"}"`}
               onClick={() => {
                 const confirmed = window.confirm(`Delete the session "${session.sessionName || "Untitled session"}"?`);
                 if (!confirmed) return;
@@ -406,14 +421,48 @@ export function SessionDetailPage({ slug, sessionId }) {
             </div>
           )}
 
+          {evaluation.status === "idle" && (
+            <div className="subtle-card">
+              <p className="muted-copy" style={{ margin: 0, fontSize: "0.9rem" }}>
+                Evaluation will run automatically after the session ends. Check back shortly.
+              </p>
+            </div>
+          )}
+
+          {evaluation.status === "completed" && !evaluation.result && (
+            <div className="subtle-card">
+              <p className="muted-copy" style={{ margin: 0, fontSize: "0.9rem" }}>
+                Evaluation completed but no result was returned. Try running it again from the thread view.
+              </p>
+            </div>
+          )}
+
           {evaluation.status === "completed" && evaluation.result && (
             <>
-              <div className="dashboard-score" style={{ marginTop: 8 }}>
-                {evaluation.result.score}<span style={{ fontSize: "1.4rem", opacity: 0.5 }}>/100</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 8, flexWrap: "wrap" }}>
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <svg width="100" height="100" viewBox="0 0 100 100" aria-hidden="true">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="var(--bg-strong)" strokeWidth="10"/>
+                    <circle
+                      cx="50" cy="50" r="42" fill="none"
+                      stroke={evaluation.result.score >= 80 ? "var(--brand-green)" : evaluation.result.score >= 60 ? "#f59e0b" : "var(--brand-red)"}
+                      strokeWidth="10"
+                      strokeLinecap="round"
+                      strokeDasharray={`${2 * Math.PI * 42}`}
+                      strokeDashoffset={`${2 * Math.PI * 42 * (1 - evaluation.result.score / 100)}`}
+                      transform="rotate(-90 50 50)"
+                      style={{ transition: "stroke-dashoffset 0.6s ease" }}
+                    />
+                  </svg>
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
+                    <span className="dashboard-score" style={{ fontSize: "1.8rem", lineHeight: 1 }}>{evaluation.result.score}</span>
+                    <span style={{ fontSize: "0.65rem", color: "var(--text-muted)", opacity: 0.6, letterSpacing: "0.05em" }}>/ 100</span>
+                  </div>
+                </div>
+                <p className="muted-copy" style={{ margin: 0, flex: 1, minWidth: 160 }}>
+                  {evaluation.result.summary}
+                </p>
               </div>
-              <p className="muted-copy" style={{ marginTop: 0, marginBottom: 4 }}>
-                {evaluation.result.summary}
-              </p>
 
               <div className="metrics-grid-2">
                 {evaluation.result.metrics.map((metric) => (
@@ -421,10 +470,10 @@ export function SessionDetailPage({ slug, sessionId }) {
                 ))}
               </div>
 
-              <CollapsibleList items={evaluation.result.strengths} label="Strengths" initialMax={4} />
-              <CollapsibleList items={evaluation.result.improvements} label="Areas to improve" initialMax={4} />
+              <CollapsibleList items={evaluation.result.strengths} label="Strengths" initialMax={4} variant="strength" />
+              <CollapsibleList items={evaluation.result.improvements} label="Areas to improve" initialMax={4} variant="improvement" />
               {evaluation.result.recommendations?.length > 0 && (
-                <CollapsibleList items={evaluation.result.recommendations} label="Recommended next steps" initialMax={4} />
+                <CollapsibleList items={evaluation.result.recommendations} label="Recommended next steps" initialMax={4} variant="improvement" />
               )}
             </>
           )}
@@ -549,7 +598,11 @@ export function SessionDetailPage({ slug, sessionId }) {
             <>
               <div className="subtle-card">
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                  <label htmlFor="compare-select" className="metric-label" style={{ marginBottom: 0, flexShrink: 0 }}>
+                    Compare against
+                  </label>
                   <select
+                    id="compare-select"
                     className="language-select compare-select"
                     value={selectedComparisonId}
                     onChange={(e) => setSelectedComparisonId(e.target.value)}
@@ -629,14 +682,16 @@ export function SessionDetailPage({ slug, sessionId }) {
         <div className="metric-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <div className="section-title" style={{ margin: 0 }}>Transcript</div>
-            {session.transcript.length > 6 && (
-              <button type="button" className="toggle-btn" style={{ marginTop: 0 }} onClick={() => setTranscriptExpanded(e => !e)}>
+            {(session.transcript?.length ?? 0) > 6 && (
+              <button type="button" className="toggle-btn" style={{ marginTop: 0 }} aria-expanded={transcriptExpanded} onClick={() => setTranscriptExpanded(e => !e)}>
                 {transcriptExpanded ? "▲ Collapse" : "▼ Expand all"}
               </button>
             )}
           </div>
-          {session.transcript.length === 0 ? (
-            <div className="empty-state">No transcript was saved for this session.</div>
+          {!(session.transcript?.length) ? (
+            <div className="empty-state">
+              <p>No transcript was saved for this session.</p>
+            </div>
           ) : (
             <div className={transcriptExpanded ? "transcript-scroll transcript-scroll-expanded" : "transcript-scroll"}>
               {session.transcript.map((entry) => (

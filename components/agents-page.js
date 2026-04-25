@@ -25,13 +25,17 @@ export function AgentsPage() {
           return (
             <Link
               href={`/agents/${agent.slug}`}
-              className={`agent-card${isCustom ? " agent-card-custom" : ""}`}
+              className={`agent-card${isCustom ? " agent-card-custom agent-card-wide" : ""}`}
               key={agent.slug}
             >
               {/* Header row: role badge + duration pill */}
               <div className="agent-title-row">
                 <div className="agent-badge">{agent.role}</div>
                 <span className="pill">{agent.duration}</span>
+              </div>
+
+              <div className="agent-avatar" aria-hidden="true">
+                <span>{agent.role[0]}</span>
               </div>
 
               {/* Agent name */}

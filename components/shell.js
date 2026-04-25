@@ -36,6 +36,7 @@ export function AppShell({ children, compact = false }) {
       <div className="page-frame">
         <header className="topbar">
           <Link href="/" className="brand">
+            <div className="brand-mark" aria-hidden="true">SC</div>
             <div>
               <div className="brand-title">SimCoach</div>
               <div className="brand-subtitle">
@@ -50,6 +51,7 @@ export function AppShell({ children, compact = false }) {
             className={`theme-toggle-icon ${isLight ? "theme-is-light" : "theme-is-dark"}`}
             onClick={() => setTheme(isLight ? "dark" : "light")}
             aria-label={isLight ? "Switch to dark mode" : "Switch to light mode"}
+            aria-pressed={isLight}
             title={isLight ? "Switch to dark mode" : "Switch to light mode"}
           >
             <span className="theme-icon-inner">
@@ -59,7 +61,7 @@ export function AppShell({ children, compact = false }) {
         </header>
         {children}
         {toasts.length ? (
-          <div className="toast-stack">
+          <div className="toast-stack" role="status" aria-live="polite" aria-atomic="false">
             {toasts.map((toast) => (
               <button
                 type="button"

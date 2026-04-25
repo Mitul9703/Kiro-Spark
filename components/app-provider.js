@@ -623,6 +623,28 @@ export function AppProvider({ children }) {
     [patchSession, pushToast],
   );
 
+  const applyThreadMemory = useCallback(
+    (agentSlug, threadId, threadEval) => {
+      const hiddenGuidance =
+        typeof threadEval?.hiddenGuidance === "string" ? threadEval.hiddenGuidance : "";
+      const summary = typeof threadEval?.summary === "string" ? threadEval.summary : "";
+      const focusAreas = Array.isArray(threadEval?.focusAreas)
+        ? threadEval.focusAreas.filter((item) => typeof item === "string")
+        : [];
+
+      patchThread(agentSlug, threadId, (currentThread) => ({
+        ...currentThread,
+        memory: {
+          hiddenGuidance,
+          summary,
+          focusAreas,
+          updatedAt: new Date().toISOString(),
+        },
+      }));
+    },
+    [patchThread],
+  );
+
   const runThreadEvaluationJob = useCallback(
     async (slug, threadId) => {
       const jobKey = `${slug}:${threadId}`;
@@ -992,6 +1014,7 @@ export function AppProvider({ children }) {
       deleteThread,
       deleteSession,
       runThreadEvaluationJob,
+      applyThreadMemory,
       dismissToast,
       toasts,
     }),
@@ -1012,6 +1035,7 @@ export function AppProvider({ children }) {
       deleteThread,
       deleteSession,
       runThreadEvaluationJob,
+      applyThreadMemory,
       toasts,
     ],
   );

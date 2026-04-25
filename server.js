@@ -1,12 +1,22 @@
 import http from "node:http";
+import fs from "node:fs";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import multer from "multer";
 import next from "next";
+import { createRequire } from "node:module";
 import { WebSocketServer } from "ws";
 import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { AssemblyAI } from "assemblyai";
+import { AIMessage } from "@langchain/core/messages";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { createAgent, tool } from "langchain";
+import { z } from "zod";
 import { AGENT_LOOKUP } from "./lib/agents.js";
+
+const require = createRequire(import.meta.url);
+const { PDFParse } = require("pdf-parse");
 
 dotenv.config();
 
@@ -24,6 +34,7 @@ const port = Number(process.env.PORT || 5000);
 
 const nextApp = next({ dev, hostname, port });
 const handle = nextApp.getRequestHandler();
+const upload = multer({ dest: "uploads/" });
 
 // ─── Gemini key helper ────────────────────────────────────────────────────────
 
@@ -348,6 +359,141 @@ async function fetchResourcesForBrief(brief) {
 
   const curated = await curateResourceCandidates(brief, enriched);
   return curated.slice(0, 4);
+}
+
+// ─── URL / text helpers ───────────────────────────────────────────────────────
+
+function normalizeHttpUrl(rawUrl) {
+  const trimmed = (rawUrl || "").trim();
+  if (!trimmed) return "";
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try { return new URL(withProtocol).toString(); }
+  catch (_) { return ""; }
+}
+
+function companyNameFromUrl(rawUrl) {
+  const normalized = normalizeHttpUrl(rawUrl);
+  if (!normalized) return "";
+  try {
+    const { hostname } = new URL(normalized);
+    const cleaned = hostname.replace(/^www\./, "").replace(/\.(com|ai|io|org|net|co|app|dev|jobs|careers)$/i, "");
+    return cleaned.split(".").filter(Boolean).map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ");
+  } catch (_) { return ""; }
+}
+
+function extractTextFromLangChainContent(content) {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) return content.map((p) => (typeof p === "string" ? p : p?.text || "")).join("\n");
+  if (content && typeof content.text === "string") return content.text;
+  return "";
+}
+
+function stripCodeFences(text) {
+  return (text || "").trim().replace(/^```markdown\s*/i, "").replace(/^```md\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "").trim();
+}
+
+function normalizeCodingQuestionMarkdown(rawText, companyUrl) {
+  const markdown = stripCodeFences(rawText);
+  if (!markdown) return null;
+  const titleMatch = markdown.match(/(?:^|\n)#{1,6}\s*(.+)/);
+  const sourceUrlMatch = markdown.match(/https?:\/\/[^\s)]+/i);
+  return {
+    companyName: companyNameFromUrl(companyUrl) || "",
+    title: (titleMatch?.[1] || "Company-specific coding question").trim(),
+    markdown,
+    sourceUrl: normalizeHttpUrl(sourceUrlMatch?.[0] || ""),
+  };
+}
+
+function hasGroundedProblemSignals(markdown = "", title = "") {
+  const text = `${title}\n${markdown}`.toLowerCase();
+  const checks = [/given\s+an?\s/, /\binput\b/, /\boutput\b/, /\bexample\b/, /\bconstraint/, /\breturn\b/, /\btest case/];
+  return checks.reduce((c, p) => c + (p.test(text) ? 1 : 0), 0) >= 3;
+}
+
+function looksLikeWeakInterviewExperienceSource(url = "", title = "") {
+  const n = `${url} ${title}`.toLowerCase();
+  return n.includes("interview-experience") || n.includes("my-") || n.includes("experience") || n.includes("medium.com");
+}
+
+// ─── External research agent ──────────────────────────────────────────────────
+
+async function generateExternalResearchForAgent({ agentSlug, companyUrl, customContext = "", uploadContextText = "" }) {
+  const normalizedUrl = normalizeHttpUrl(companyUrl);
+  if (!normalizedUrl) throw new Error("A valid company URL is required.");
+  if (!process.env.FIRECRAWL_API_KEY) throw new Error("Missing FIRECRAWL_API_KEY.");
+  getGeminiApiKey("questionFinder");
+
+  const companyName = companyNameFromUrl(normalizedUrl) || "the target company";
+  const agentConfig = AGENT_LOOKUP[agentSlug] || AGENT_LOOKUP.custom;
+  const searchLogs = [];
+  const scrapeLogs = [];
+  const scrapeCache = new Map();
+
+  const searchTool = tool(
+    async ({ query, limit = 5 }) => {
+      const results = await searchFirecrawl(query, { limit });
+      const candidates = normalizeFirecrawlCandidates(results, "website")
+        .map((item) => ({ title: item.title, url: item.url, source: item.source, snippet: item.snippet, likelyWeakSource: looksLikeWeakInterviewExperienceSource(item.url, item.title) }))
+        .slice(0, limit);
+      searchLogs.push({ query, candidates });
+      console.log("[external-research] search", { agentSlug, companyName, query, count: candidates.length });
+      return JSON.stringify(candidates);
+    },
+    {
+      name: "search_web_for_coding_questions",
+      description: "Search the public web for actual coding problem pages, company-tagged practice lists, or grounded sources. Use this before scraping.",
+      schema: z.object({ query: z.string().describe("A web search query."), limit: z.number().int().min(1).max(6).optional() }),
+    },
+  );
+
+  const scrapeTool = tool(
+    async ({ url }) => {
+      const target = normalizeHttpUrl(url);
+      if (!target) throw new Error("A valid URL is required for scraping.");
+      const scraped = await scrapeWithFirecrawl(target);
+      const payload = { url: target, title: scraped?.metadata?.title || scraped?.metadata?.ogTitle || domainFromUrl(target), markdown: (scraped?.markdown || "").slice(0, 9000) };
+      const enriched = { ...payload, groundedProblemSignals: hasGroundedProblemSignals(payload.markdown, payload.title), weakSource: looksLikeWeakInterviewExperienceSource(target, payload.title) };
+      scrapeCache.set(target, enriched);
+      scrapeLogs.push({ url: target, title: enriched.title, groundedProblemSignals: enriched.groundedProblemSignals });
+      console.log("[external-research] scrape", { agentSlug, url: target, title: enriched.title });
+      return JSON.stringify(enriched);
+    },
+    {
+      name: "scrape_coding_question_source",
+      description: "Scrape one promising page to extract grounded question text, examples, constraints, and evidence.",
+      schema: z.object({ url: z.string().describe("The URL of a promising source page to scrape.") }),
+    },
+  );
+
+  const llm = new ChatGoogleGenerativeAI({ model: "gemini-2.5-flash", temperature: 0.1, maxRetries: 2, apiKey: getGeminiApiKey("questionFinder") });
+
+  const systemPrompt = agentSlug === "coding"
+    ? `You are a careful research agent selecting exactly one grounded coding interview question for a live technical interview rehearsal.\n\nWorkflow:\n- Search first for reputable public sources such as actual problem pages, company-tagged coding question lists, or well-known prep pages.\n- Prefer LeetCode problem pages, company-tagged question lists, NeetCode-style lists, or public pages that contain a full problem statement.\n- If you find an interview-experience page that only mentions a question title, topic, or data structure, do not stop there. Treat it as a clue and search again for the actual problem page.\n- Scrape the most promising one or two URLs to verify the question details.\n- Choose exactly one question that is plausible for an early-round coding screen.\n\nYour final answer must be markdown only with sections: # Question Title, ## Difficulty, ## Why this question fits, ## Problem Statement, ## Examples, ## Constraints, ## Suggested Test Cases, ## Source, ## Evidence`
+    : agentSlug === "investor"
+      ? `You are a careful research agent preparing hidden diligence context for an investor-style live pitch rehearsal.\n\nWorkflow:\n- Search for authoritative public sources about the target company or product.\n- Prioritize the company site, product/pricing pages, recent news, funding announcements, partnerships, reviews, and market signals.\n- Scrape the most relevant pages and synthesize a concise investor-style brief.\n\nYour final answer must be markdown only with sections: # Company Research Brief, ## Company Snapshot, ## Product and Monetization Signals, ## Recent News and Material Events, ## Market / Competitive Context, ## Investor Pressure Points, ## Source, ## Evidence`
+      : `You are a careful research agent preparing hidden public-context notes for a live rehearsal session.\n\nWorkflow:\n- Search for relevant public sources related to the target URL and the user's optional context.\n- Scrape the most promising pages and synthesize a concise brief.\n\nYour final answer must be markdown only with sections: # External Context Brief, ## What this appears to be, ## Relevant Public Signals, ## Points worth probing, ## Source, ## Evidence`;
+
+  const codingQuestionAgent = createAgent({ model: llm, tools: [searchTool, scrapeTool], systemPrompt });
+
+  const prompt = agentSlug === "coding"
+    ? `Target company URL: ${normalizedUrl}\nTarget company name: ${companyName}\n\nOptional interview context:\n${customContext?.trim() || "None provided."}\n\nOptional uploaded document context:\n${uploadContextText?.trim() || "None provided."}\n\nFind one coding interview question for this company. Use the tools to search, inspect sources, and return a single grounded question.`
+    : agentSlug === "investor"
+      ? `Target company URL: ${normalizedUrl}\nTarget company name: ${companyName}\n\nOptional investor context:\n${customContext?.trim() || "None provided."}\n\nOptional uploaded document context:\n${uploadContextText?.trim() || "None provided."}\n\nBuild one hidden investor-style diligence brief for this company.`
+      : `Target URL: ${normalizedUrl}\nTarget entity name: ${companyName}\nAgent role: ${agentConfig.name}\n\nOptional scenario context:\n${customContext?.trim() || "None provided."}\n\nOptional uploaded document context:\n${uploadContextText?.trim() || "None provided."}\n\nBuild one hidden external-context brief for this session.`;
+
+  const result = await codingQuestionAgent.invoke({ messages: [{ role: "user", content: prompt }] });
+
+  const finalMessage = Array.isArray(result?.messages)
+    ? [...result.messages].reverse().find((m) => m instanceof AIMessage)
+    : null;
+  const rawText = extractTextFromLangChainContent(finalMessage?.content || "");
+  console.log("[external-research] final_raw", { agentSlug, length: rawText.length });
+
+  const question = normalizeCodingQuestionMarkdown(rawText, normalizedUrl) || null;
+  console.log("[external-research] generated", { agentSlug, companyUrl: normalizedUrl, found: Boolean(question), title: question?.title || null, searchesRun: searchLogs.length, scrapesRun: scrapeLogs.length });
+
+  return question;
 }
 
 // ─── WebSocket live bridge ────────────────────────────────────────────────────
@@ -742,14 +888,94 @@ async function startServer() {
     }
   });
 
-  // Stub for agent-external-context — returns no research so session proceeds
-  // (full LangChain implementation comes in a later iteration)
-  app.post("/api/agent-external-context", async (req, res) => {
-    const { companyUrl } = req.body || {};
-    if (!companyUrl) {
-      return res.json({ ok: true, research: null, message: "No company URL provided." });
+  // PDF upload — parse with pdf-parse, clean with Gemini
+  app.post("/api/upload-deck", upload.single("deck"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded." });
+      }
+
+      const fileBuffer = fs.readFileSync(req.file.path);
+      const parser = new PDFParse({ data: fileBuffer });
+      const parsed = await parser.getText();
+      const rawText = (parsed.text || "").trim();
+      await parser.destroy?.();
+
+      fs.unlink(req.file.path, () => {});
+
+      if (!rawText) {
+        return res.status(400).json({ error: "Could not extract text from PDF." });
+      }
+
+      const ai = new GoogleGenAI({ apiKey: getGeminiApiKey("uploadPrep") });
+
+      const prepResponse = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `You are preparing grounded context for a live conversational interview/presentation agent.
+
+The following text was parsed from an uploaded PDF and may be messy, out of order, or contain formatting artifacts.
+
+Your task:
+- infer what kind of document this is
+- rewrite it into clean, organized text
+- preserve only grounded information from the document
+- do not invent anything
+- remove parsing noise, duplication, and broken formatting
+- keep important names, projects, roles, metrics, requirements, and claims
+- produce plain text only
+- make the result useful as context for a live conversational AI agent
+
+Return a clean text memo with sections when helpful.
+
+Parsed PDF text:
+${rawText}`,
+      });
+
+      const uploadedContextText = (prepResponse.text || "").trim();
+      const uploadedFileName = req.file.originalname;
+
+      if (!uploadedContextText) {
+        return res.status(500).json({ error: "Failed to create grounded context." });
+      }
+
+      return res.json({
+        ok: true,
+        fileName: uploadedFileName,
+        contextPreview: uploadedContextText.slice(0, 1000),
+        contextText: uploadedContextText,
+      });
+    } catch (error) {
+      console.error("Deck upload error:", error);
+      return res.status(500).json({ error: "Failed to upload and process PDF.", details: error.message });
     }
-    return res.json({ ok: true, research: null, message: "External research not yet implemented." });
+  });
+
+  // External research — LangChain agent with Firecrawl tools
+  app.post("/api/agent-external-context", async (req, res) => {
+    try {
+      const { agentSlug, companyUrl, customContext, upload: uploadBody } = req.body || {};
+      const normalizedUrl = normalizeHttpUrl(companyUrl);
+
+      if (!normalizedUrl) {
+        return res.json({ ok: true, research: null, message: "No valid company URL was provided." });
+      }
+
+      const research = await generateExternalResearchForAgent({
+        agentSlug: agentSlug || "custom",
+        companyUrl: normalizedUrl,
+        customContext: (customContext || "").trim(),
+        uploadContextText: (uploadBody?.contextText || "").trim(),
+      });
+
+      return res.json({
+        ok: true,
+        research,
+        message: research ? "External research fetched." : "No grounded external research could be confirmed.",
+      });
+    } catch (error) {
+      console.error("External research generation error:", error);
+      return res.status(500).json({ error: "Failed to fetch external research context.", details: error.message });
+    }
   });
 
   // Session evaluation — calls Gemini with structured JSON schema
@@ -858,11 +1084,6 @@ ${transcriptText}
       console.error("Resource search error:", error);
       return res.status(500).json({ error: "Failed to fetch improvement resources.", details: error.message });
     }
-  });
-
-  // Stub: PDF upload (placeholder for next iteration)
-  app.post("/api/upload-deck", async (req, res) => {
-    return res.json({ ok: true, fileName: "", contextText: "", contextPreview: "", message: "PDF upload not yet implemented." });
   });
 
   // Thread evaluation — longitudinal analysis across sessions

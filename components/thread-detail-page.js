@@ -43,6 +43,7 @@ export function ThreadDetailPage({ slug, threadId }) {
 
   const [localError, setLocalError] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [researchEnabled, setResearchEnabled] = useState(true);
 
   const canStart = useMemo(() => {
     return (
@@ -112,7 +113,7 @@ export function ThreadDetailPage({ slug, threadId }) {
         : current.researchPrep,
     }));
 
-    if (["coding", "investor", "custom"].includes(slug)) {
+    if (["coding", "investor", "custom"].includes(slug) && researchEnabled) {
       const companyUrl = (agentState.companyUrl || "").trim();
       if (companyUrl) {
         patchAgent(slug, (current) => ({
@@ -289,6 +290,39 @@ export function ThreadDetailPage({ slug, threadId }) {
                     }
                     style={{ minHeight: 52, resize: "none" }}
                   />
+                  <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginTop: 4 }}>
+                    <span
+                      role="switch"
+                      aria-checked={researchEnabled}
+                      tabIndex={0}
+                      onClick={() => setResearchEnabled((c) => !c)}
+                      onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); setResearchEnabled((c) => !c); } }}
+                      style={{
+                        display: "inline-block",
+                        width: 40,
+                        height: 22,
+                        borderRadius: 999,
+                        background: researchEnabled ? "var(--accent)" : "var(--bg-strong)",
+                        position: "relative",
+                        transition: "background 160ms ease",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span style={{
+                        position: "absolute",
+                        top: 3,
+                        left: researchEnabled ? 21 : 3,
+                        width: 16,
+                        height: 16,
+                        borderRadius: 999,
+                        background: "#fff",
+                        transition: "left 160ms ease",
+                      }} />
+                    </span>
+                    <span className="muted-copy" style={{ fontSize: "0.85rem" }}>
+                      {researchEnabled ? "Fetch external research before session" : "Skip external research — start faster"}
+                    </span>
+                  </label>
                 </div>
               ) : null}
             </div>

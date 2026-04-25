@@ -625,29 +625,84 @@ export function AppProvider({ children }) {
 
   const runThreadEvaluationJob = useCallback(
     async (slug, threadId) => {
-      // Placeholder — immediately mark as completed with stub result
-      // Real thread evaluation will be wired in a later iteration
-      patchThread(slug, threadId, (currentThread) => ({
-        ...currentThread,
+      const jobKey = `${slug}:${threadId}`;
+      if (threadJobsRef.current.has(jobKey)) return;
+
+      const thread = (state.threads?.[slug] || []).find((item) => item.id === threadId);
+      if (!thread) return;
+
+      const threadSessions = (state.sessions?.[slug] || [])
+        .filter((session) => session.threadId === threadId)
+        .sort((a, b) => new Date(a.endedAt).getTime() - new Date(b.endedAt).getTime());
+
+      const completedSessions = threadSessions.filter(
+        (session) => session.evaluation?.status === "completed" && session.evaluation?.result,
+      );
+
+      if (!completedSessions.length) return;
+
+      const abortController = new AbortController();
+      threadJobsRef.current.set(jobKey, abortController);
+
+      patchThread(slug, threadId, (cur) => ({
+        ...cur,
         updatedAt: new Date().toISOString(),
-        evaluation: {
-          status: "completed",
-          completedAt: new Date().toISOString(),
-          result: {
-            summary: "Thread evaluation not yet implemented.",
-            trajectory: "—",
-            comments: [],
-            strengths: [],
-            focusAreas: [],
-            nextSessionFocus: "—",
-            metricTrends: [],
-            hiddenGuidance: "",
-          },
-          error: "",
-        },
+        evaluation: { ...cur.evaluation, status: "processing", startedAt: cur.evaluation?.startedAt || new Date().toISOString(), error: "" },
       }));
+
+      try {
+        const response = await fetch(getApiUrl("/api/evaluate-thread"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agentSlug: slug,
+            thread: { id: thread.id, title: thread.title, createdAt: thread.createdAt, updatedAt: thread.updatedAt },
+            sessions: completedSessions.map((session) => ({
+              id: session.id,
+              sessionName: session.sessionName,
+              startedAt: session.startedAt,
+              endedAt: session.endedAt,
+              durationLabel: session.durationLabel,
+              transcript: session.transcript || [],
+              upload: session.upload || null,
+              coding: session.coding || null,
+              customContext: session.customContext || "",
+              evaluation: session.evaluation.result,
+            })),
+          }),
+          signal: abortController.signal,
+        });
+
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "Failed to evaluate thread.");
+
+        patchThread(slug, threadId, (cur) => ({
+          ...cur,
+          updatedAt: new Date().toISOString(),
+          memory: {
+            hiddenGuidance: payload.threadEvaluation?.hiddenGuidance || "",
+            summary: payload.threadEvaluation?.summary || "",
+            focusAreas: payload.threadEvaluation?.focusAreas || [],
+            updatedAt: new Date().toISOString(),
+          },
+          evaluation: {
+            status: "completed",
+            completedAt: new Date().toISOString(),
+            result: payload.threadEvaluation,
+            error: "",
+          },
+        }));
+      } catch (error) {
+        if (abortController.signal.aborted) return;
+        patchThread(slug, threadId, (cur) => ({
+          ...cur,
+          evaluation: { ...cur.evaluation, status: "failed", failedAt: new Date().toISOString(), error: error.message || "Thread evaluation failed." },
+        }));
+      } finally {
+        threadJobsRef.current.delete(jobKey);
+      }
     },
-    [patchThread],
+    [patchThread, state.sessions, state.threads],
   );
 
   const runEvaluationJob = useCallback(

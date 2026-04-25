@@ -123,6 +123,27 @@ const tinyFishArticlesSchema = {
   },
 };
 
+const threadEvaluationResponseSchema = {
+  type: Type.OBJECT,
+  required: ["summary", "trajectory", "comments", "strengths", "focusAreas", "nextSessionFocus", "metricTrends", "hiddenGuidance"],
+  properties: {
+    summary: { type: Type.STRING },
+    trajectory: { type: Type.STRING },
+    comments: { type: Type.ARRAY, items: { type: Type.STRING } },
+    strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+    focusAreas: { type: Type.ARRAY, items: { type: Type.STRING } },
+    nextSessionFocus: { type: Type.STRING },
+    metricTrends: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT, required: ["label", "trend", "comment"],
+        properties: { label: { type: Type.STRING }, trend: { type: Type.STRING }, comment: { type: Type.STRING } },
+      },
+    },
+    hiddenGuidance: { type: Type.STRING, description: "Internal-only hidden session guidance for the next live session. Never meant for direct user display." },
+  },
+};
+
 // ─── Transcript / evaluation helpers ──────────────────────────────────────────
 
 function normalizeTranscriptRole(role) {
@@ -842,6 +863,106 @@ ${transcriptText}
   // Stub: PDF upload (placeholder for next iteration)
   app.post("/api/upload-deck", async (req, res) => {
     return res.json({ ok: true, fileName: "", contextText: "", contextPreview: "", message: "PDF upload not yet implemented." });
+  });
+
+  // Thread evaluation — longitudinal analysis across sessions
+  app.post("/api/evaluate-thread", async (req, res) => {
+    try {
+      const { agentSlug, thread, sessions } = req.body || {};
+      const agent = AGENT_LOOKUP[agentSlug] || AGENT_LOOKUP.recruiter;
+      const orderedSessions = Array.isArray(sessions) ? [...sessions] : [];
+
+      if (!orderedSessions.length) {
+        return res.status(400).json({ error: "At least one completed session is required for thread evaluation." });
+      }
+
+      const criteriaBlock = (agent.evaluationCriteria || [])
+        .map((c, i) => `${i + 1}. ${c.label}: ${c.description}`)
+        .join("\n");
+
+      const now = Date.now();
+      const sessionDigest = orderedSessions
+        .map((session, index) => {
+          const endedAt = new Date(session.endedAt || session.startedAt || now).getTime();
+          const ageDays = Math.max(0, (now - endedAt) / (1000 * 60 * 60 * 24));
+          const recencyWeight = Math.max(0.15, Number(Math.exp(-ageDays / 21).toFixed(2)));
+          const metricsText = (session.evaluation?.metrics || [])
+            .map((m) => `- ${m.label}: ${m.value}`)
+            .join("\n");
+
+          return `
+Session ${index + 1}
+- Name: ${session.sessionName || "Untitled"}
+- Ended at: ${session.endedAt || "Unknown"}
+- Duration: ${session.durationLabel || "Unknown"}
+- Recency weight: ${recencyWeight}
+- Overall score: ${session.evaluation?.score ?? "Unknown"}
+- Summary: ${session.evaluation?.summary || "No session summary"}
+- Strengths: ${(session.evaluation?.strengths || []).join("; ") || "None"}
+- Improvements: ${(session.evaluation?.improvements || []).join("; ") || "None"}
+- Metric scores:
+${metricsText || "- None"}
+          `.trim();
+        })
+        .join("\n\n");
+
+      const prompt = `
+Agent: ${agent.name}
+Thread title: ${thread?.title || "Untitled thread"}
+Rubric dimensions:
+${criteriaBlock}
+
+You are evaluating a whole practice thread, not a single session.
+
+Instructions:
+- Analyze improvement over time across the sessions below.
+- Weight newer sessions more heavily than older ones.
+- Treat repeated weaknesses across multiple sessions as important, even if some sessions are older.
+- The visible thread evaluation should talk about trajectory, repeated strengths, repeated gaps, and the best next areas to improve.
+- Focus on user behavior patterns only: clarity, specificity, composure, confidence, evidence use, directness, structure, and response handling.
+- Do not carry forward old technical details, subject matter specifics, project facts, or prior presentation content as thread memory.
+- The thread memory is for adapting to the user's behavioral patterns, not for remembering the exact content topic from prior sessions.
+- nextSessionFocus should explain what the next session will quietly probe more based on the user's behavior patterns.
+- The hidden guidance must be internal-only and must never be written as something the live interviewer says explicitly.
+- Hidden guidance should tell the next live session what to probe more, what to probe less, and how to adapt pressure based on this thread.
+- Hidden guidance must explicitly say not to mention prior sessions or stored weaknesses to the user.
+- Keep comments concise and useful.
+
+Thread sessions:
+${sessionDigest}
+      `.trim();
+
+      const ai = new GoogleGenAI({ apiKey: getGeminiApiKey("evaluation") });
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          systemInstruction: `You analyze longitudinal performance for the ${agent.name} agent. Be grounded, concise, and evidence-based. Distinguish between visible thread feedback and hidden internal session guidance. The hidden guidance is for internal steering only and must never be phrased for direct disclosure to the user.`,
+          responseMimeType: "application/json",
+          responseSchema: threadEvaluationResponseSchema,
+        },
+      });
+
+      const parsed = JSON.parse((response.text || "").trim());
+      console.log("[thread-eval] generated", {
+        agentSlug,
+        threadId: thread?.id || null,
+        summary: parsed.summary,
+        nextSessionFocus: parsed.nextSessionFocus,
+        hiddenGuidancePreview: (parsed.hiddenGuidance || "").slice(0, 240),
+      });
+
+      return res.json({ ok: true, threadEvaluation: parsed });
+    } catch (error) {
+      console.error("Thread evaluation error:", error);
+      return res.status(500).json({ error: "Failed to evaluate thread.", details: error.message });
+    }
+  });
+
+  // Stub: session comparison (placeholder for next iteration)
+  app.post("/api/compare-sessions", async (req, res) => {
+    return res.json({ ok: true, comparison: null, message: "Session comparison not yet implemented." });
   });
 
   // Fallthrough to Next.js
